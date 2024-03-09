@@ -1,0 +1,244 @@
+ ------------------------------------------------------------------------------
+	runspi / runsph / runspha	Version 0.3 Copyright (c)2024 TORO
+ ------------------------------------------------------------------------------
+
+	Susie Plug-in を使って画像の取得、書庫展開をしたり、Susie Plug-inの
+	動作検証を行ったりするためのコンソールアプリケーションです。
+
+	Susie Plug-in は、竹村嘉人 (たけちん)氏作の画像ローダ「Susie」
+	用の Plug-in で、様々な形式の画像ファイルを読み込めるようにする
+	ためのものです。
+	( http://www.digitalpad.co.jp/~takechin/ )
+
+
+●動作環境
+・対応/動作確認 OS
+
+	Windows 2003/XP 以降で動作します。
+
+・レジストリ
+
+	レジストリは使用しません。
+
+
+●実行方法
+
+	対象となる Susie Plug-in の種類によって対応するファイルを
+	実行してください。以下、runspx.exe は以下の名前に置き換えてください。
+
+	runspi.exe 拡張子 spi (x86)用
+	runsph.exe 拡張子 sph (x64)用
+	runspha.exe 拡張子 spha (ARM64)用
+
+(1) Susie Plug-in の情報
+
+	runspx.exe (Plug-inのパス)
+
+	用意されている API の一覧を表示します。
+
+
+(2) 画像の情報表示
+
+	runspx.exe (Plug-inのパス) (読み込む画像のパス)
+
+	指定された画像を Plug-in の GetPicture で読み込み、その画像の情報を
+	表示します。
+
+
+(3) 画像の取得
+
+	runspx.exe (Plug-inのパス) (読み込む画像のパス) -b (展開先の画像のパス)
+
+	指定された画像を Plug-in の GetPicture で読み込み、BMP ファイルとして
+	保存します。
+
+
+(4) 書庫の一覧表示
+
+	指定された画像を Plug-in の GetArchiveInfo で読み込み、書庫内の
+	ファイル一覧を表示します。
+
+	runspx.exe (Plug-inのパス) (読み込む書庫のパス)
+
+
+(5) 書庫の全ファイル展開
+
+	指定された画像を Plug-in の GetArchiveInfo で読み込み、書庫内の
+	全ファイルを展開先に保存します。
+
+	runspx.exe (Plug-inのパス) (読み込む書庫のパス) [-j] -e [展開先]
+	-j はディレクトリ指定を無視します
+
+
+(6) 書庫の指定ファイル展開
+
+	指定された画像を Plug-in の GetArchiveInfo で読み込み、書庫内の
+	指定ファイルを展開先に保存します。
+
+	runspx.exe (Plug-inのパス) (読み込む書庫のパス) (展開ファイル名) -e [展開先]
+
+
+(7) Susie Plug-in のテスト
+
+	runspx.exe (Plug-inのパス) (読み込む画像・書庫のパス) -t [-p]
+	runspx.exe (Plug-inのパス) (読み込む画像・書庫のパス) -tz [-p]
+
+	全APIを一通り使用するテストを行います。
+	挙動についてコメントがある場合は「●コメント内容」を出力します。
+	「End test.」が表示されずに終了したときは、異常終了です。
+	異常終了したとき、スタックトレース表示が可能であれば表示します。
+	表示できない場合は、主にスタックの破損か、スタックオーバフローと
+	思われます。
+	尚、デバッガを使用する場合は -p を指定することで
+	スタックトレース表示を行わず、デバッガに処理を渡せます。
+
+	-tz を指定したときは、0 バイトファイルを渡すテストを追加します。
+
+
+(8)オプション一覧
+
+	-c		Plug-in の設定ダイアログを表示します。
+	-v		Plug-in の About ダイアログを表示します。
+	-b 保存先パス	GetPicture / GetPreview で得たビットマップをBMP
+			ファイルとして保存します。
+	-bc 保存先パス	GetPicture / GetPreview で得たビットマップを
+			CreatePicture で保存します。
+	-bp Pluginパス	CreatePicture を使う Susie Plug-in を指定します。
+	-r		GetPreview を GetPicture の代わりに使用します。
+	-t		Plug-in のテストを行います。
+	-tz		Plug-in のテストを行います。ファイズサイズが0の
+			テストも行います。
+	-p		異常終了したとき、スタックトレースを行いません。
+	-e		GetFile による展開を行います。
+	-j		GetFile による展開時、サブディレクトリを無視します。
+	-srcdisk	入力ソースをファイルにします。
+	-srcmem		入力ソースをメモリにします。
+
+
+●64bit版 Susie Plug-in の仕様について
+
+	64bit版の正式な仕様がないため、次のような独自仕様にしています。
+	また、拡張子は .sph としています。詳細は次の場所で公開しています。
+
+	http://toro.d.dooo.jp/dlsphapi.html
+
+
+//-------------------------------------- DLL 定数
+#define SUSIEERROR_NOERROR       0
+#define SUSIEERROR_NOTSUPPORT   -1
+#define SUSIEERROR_USERCANCEL    1
+#define SUSIEERROR_UNKNOWNFORMAT 2
+#define SUSIEERROR_BROKENDATA    3
+#define SUSIEERROR_EMPTYMEMORY   4
+#define SUSIEERROR_FAULTMEMORY   5
+#define SUSIEERROR_FAULTREAD     6
+#define SUSIEERROR_RESERVED      7
+#define SUSIEERROR_INTERNAL      8
+
+typedef ULONG_PTR susie_time_t;
+//-------------------------------------- DLL 構造体
+#pragma pack(push, 1)
+typedef struct PictureInfo{
+    long    left, top;	// 画像を展開する位置
+    long    width;	// 画像の幅(pixel)
+    long    height;	// 画像の高さ(pixel)
+    WORD    x_density;	// 画素の水平方向密度
+    WORD    y_density;	// 画素の垂直方向密度
+    short   colorDepth;	// １画素当たりのbit数
+    #ifdef _WIN64
+      char  dummy[2]; // アラインメント
+    #endif
+    HLOCAL  hInfo;	// 画像内のテキスト情報
+} SUSIE_PICTUREINFO;
+
+typedef struct {
+    unsigned char  method[8];	// 圧縮法の種類
+    ULONG_PTR      position;	// ファイル上での位置
+    ULONG_PTR      compsize;	// 圧縮されたサイズ
+    ULONG_PTR      filesize;	// 元のファイルサイズ
+    susie_time_t   timestamp;	// ファイルの更新日時
+    char           path[200];	// 相対パス
+    char           filename[200];	// ファイル名
+    unsigned long  crc;	// CRC
+    #ifdef _WIN64
+       // 64bit版の構造体サイズは444bytesですが、実際のサイズは
+       // アラインメントにより448bytesになります。環境によりdummyが必要です。
+       char        dummy[4];
+    #endif
+} SUSIE_FINFO;
+
+typedef struct {
+    unsigned char  method[8];	// 圧縮法の種類
+    ULONG_PTR      position;	// ファイル上での位置
+    ULONG_PTR      compsize;	// 圧縮されたサイズ
+    ULONG_PTR      filesize;	// 元のファイルサイズ
+    susie_time_t   timestamp;	// ファイルの更新日時
+    WCHAR          path[200];	// 相対パス
+    WCHAR          filename[200];	// ファイルネーム
+    unsigned long  crc;		// CRC
+}SUSIE_FINFOW;
+#pragma pack(pop)
+
+// コールバック
+typedef int (__stdcall *SUSIE_PROGRESS)(int nNum, int nDenom, LONG_PTR lData);
+
+//-------------------------------------- DLL 関数(UNICODE版(～W)もあります)
+int __stdcall GetPluginInfo(int infono, LPSTR buf, int buflen);
+int __stdcall GetPluginInfoW(int infono, LPWSTR buf, int buflen);
+int __stdcall IsSupported(LPCSTR filename, void *dw);
+int __stdcall IsSupportedW(LPCWSTR filename, void *dw);
+int __stdcall ConfigurationDlg(HWND hWnd, int function);
+int __stdcall GetPictureInfo(LPCSTR buf, LONG_PTR len, unsigned int flag, struct PictureInfo *lpInfo);
+int __stdcall GetPictureInfoW(LPCWSTR buf, LONG_PTR len, unsigned int flag, struct PictureInfo *lpInfo);
+int __stdcall GetPicture(LPCSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+int __stdcall GetPictureW(LPCWSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+int __stdcall GetPreview(LPCSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+int __stdcall GetPreviewW(LPCWSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+int __stdcall GetArchiveInfo(LPCSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *lphInf);
+int __stdcall GetFile(LPCSTR src, LONG_PTR len, LPSTR dest, unsigned int flag, SUSIE_PROGRESS prgressCallback, LONG_PTR lData);
+int __stdcall GetFileInfo(LPCSTR buf, LONG_PTR len, LPCSTR filename, unsigned int flag, SUSIE_FINFO *lpInfo);
+int __stdcall CreatePicture(LPCSTR filepath, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, struct PictureInfo *lpInfo, SUSIE_PROGRESS progressCallback, LONG_PTR lData); // filepath の拡張子で保存形式を決定
+
+// DLL 動的読み込み用
+typedef int (__stdcall *GETPLUGININFO)(int infono, LPSTR buf, int buflen);
+typedef int (__stdcall *GETPLUGININFOW)(int infono, LPWSTR buf, int buflen);
+typedef int (__stdcall *ISSUPPORTED)(LPCSTR filename, void *dw);
+typedef int (__stdcall *ISSUPPORTEDW)(LPCWSTR filename, void *dw);
+typedef int (__stdcall *CONFIGURATIONDLG)(HWND hWnd, int function);
+typedef int (__stdcall *GETPICTUREINFO)(LPCSTR buf, LONG_PTR len, unsigned int flag, struct PictureInfo *lpInfo);
+typedef int (__stdcall *GETPICTUREINFOW)(LPCWSTR buf, LONG_PTR len, unsigned int flag, struct PictureInfo *lpInfo);
+typedef int (__stdcall *GETPICTURE)(LPCSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+typedef int (__stdcall *GETPICTUREW)(LPCWSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+typedef int (__stdcall *GETPREVIEW)(LPCSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+typedef int (__stdcall *GETPREVIEWW)(LPCWSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+typedef int (__stdcall *GETARCHIVEINFO)(LPCSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *lphInf);
+typedef int (__stdcall *GETARCHIVEINFOW)(LPCWSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *lphInf);
+typedef int (__stdcall *GETFILE)(LPCSTR src, LONG_PTR len, LPSTR dest, unsigned int flag, SUSIE_PROGRESS prgressCallback, LONG_PTR lData);
+typedef int (__stdcall *GETFILEW)(LPCWSTR src, LONG_PTR len, LPWSTR dest, unsigned int flag, FARPROC prgressCallback, LONG_PTR lData);
+typedef int (__stdcall *GETFILEINFO)(LPCSTR buf, LONG_PTR len, LPCSTR filename, unsigned int flag, SUSIE_FINFO *lpInfo);
+typedef int (__stdcall *GETFILEINFOW)(LPCWSTR buf, LONG_PTR len, LPCWSTR filename, unsigned int flag, SUSIE_FINFOW *lpInfo);
+
+
+●最後に
+
+	・このソフトウェアはフリーソフトウェアです。著作権は「TORO」、
+	  「高橋 良和」にあります。
+
+	・このソフトウェアを使用した事による利益・損害等は、こちらでは
+	  一切責任を負いません。
+
+	・転載は自由に行えます。
+	  本ソフトウェアが主となる営利目的での配布・使用はこちらに連絡下さい。
+
+	・runspi, runsph は、Visual Studio 2008、
+	  runspha は、Visual Studio 2019 を用いて構築しています。
+
+	・ソースを添付しています。個人で使用する範囲であれば自由に改変す
+	  ることができます。尚、プロジェクトファイルを添付していますが、
+	  配布ファイルの構築には使用しておらず、makefileを使用しています。
+
+
+●連絡先／一次配布先						TORO／高橋 良和
+
+E-mail	toroid.jp@gmail.com
+WWW	http://toro.d.dooo.jp/
