@@ -1,7 +1,7 @@
 /*=============================================================================
 =============================================================================*/
-#define Q_Version 0,3,0,0
-#define InfoVer "0.3"
+#define Q_Version 1,0,0,0
+#define InfoVer "1.0"
 #define InfoCopy "(c)2024"
 
 #ifndef _WIN64
@@ -22,7 +22,7 @@
  #endif
 #endif
 
-#define Copyright		"Copyright (c)2024 TORO"
+#define Copyright		"Copyright " InfoCopy " TORO"
 #define P_ProductName	APPNAME
 #define P_Description	APPNAME
 #define P_Comments		""

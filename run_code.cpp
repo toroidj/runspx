@@ -15,7 +15,7 @@ BOOL CheckHeader(void)
 	hFile = OpenFileHeader(header);
 	if ( hFile == INVALID_HANDLE_VALUE ) return FALSE;
 
-	if ( IsSupportedW != NULL ){
+	if ( UseUNICODE && (IsSupportedW != NULL) ){
 		result = IsSupportedW(sourcename, header);
 	}else{
 		result = IsSupported(sourcenameA, header);
@@ -26,6 +26,7 @@ BOOL CheckHeader(void)
 }
 
 // spibench ‚Ì“¯–¼ŠÖ”‚Ì‰ü•Ï”Å
+// ( http://cetus.sakura.ne.jp/softlab/toolbox2/index.html#spibench )
 void SaveDibData(LPCWSTR lpBmpFn, HLOCAL HBInfo, HLOCAL HBm)
 {
 	BITMAPFILEHEADER bmfh;
@@ -93,14 +94,13 @@ void SaveDibData(LPCWSTR lpBmpFn, HLOCAL HBInfo, HLOCAL HBm)
 	LocalUnlock(HBm);
 }
 
-void RunGetPicture(MODELIST RunMode)
+int DoGetPicture(MODELIST RunMode, HLOCAL &HBInfo, HLOCAL &HBm)
 {
 	int result;
 	GETPICTURE RunApiA;
 	GETPICTUREW RunApiW;
-	HLOCAL HBInfo, HBm;
 
-	if ( CheckHeader() == FALSE ) return;
+	if ( CheckHeader() == FALSE ) return SUSIEERROR_UNKNOWNFORMAT;
 
 	if ( RunMode == MODE_GETPREVIEW ){
 		RunApiA = GetPreview;
@@ -111,27 +111,40 @@ void RunGetPicture(MODELIST RunMode)
 	}
 	if ( RunApiA == NULL ){
 		printout(L" API not found.\r\n");
-		return;
+		return SUSIEERROR_INTERNAL;
 	}
 
 	HBInfo = HBm = INVALID_HANDLE_VALUE;
-	if ( RunApiW != NULL ){
+	if ( UseUNICODE && (RunApiW != NULL) ){
 		result = RunApiW(sourcename, 0, SUSIE_SOURCE_DISK, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
 	}else{
 		result = RunApiA(sourcenameA, 0, SUSIE_SOURCE_DISK, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
 	}
 	if ( result != 0 ){
 		LoadSourceImage();
-		if ( RunApiW != NULL ){
-			result = RunApiW((WCHAR *)SourceImage, SourceSize, SUSIE_SOURCE_MEM, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
-		}else{
-			result = RunApiA(SourceImage, SourceSize, SUSIE_SOURCE_MEM, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
+		if ( testmem != 0 ){
+			if ( UseUNICODE && (RunApiW != NULL) ){
+				result = RunApiW((WCHAR *)SourceImage, SourceSize, SUSIE_SOURCE_MEM, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
+			}else{
+				result = RunApiA(SourceImage, SourceSize, SUSIE_SOURCE_MEM, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
+			}
 		}
 		if ( result != 0 ){
+			printout( (RunMode == MODE_GETPREVIEW) ? L"GetPreview" : L"GetPicture");
 			PluginResult(result);
-			return;
 		}
 	}
+	return result;
+}
+
+void RunGetPicture(MODELIST RunMode)
+{
+	int result;
+	HLOCAL HBInfo, HBm;
+
+	result = DoGetPicture(RunMode, HBInfo, HBm);
+	if ( result != SUSIEERROR_NOERROR ) return;
+
 	if ( UseCreatePicture ){
 		HMODULE hXPIPlugin = NULL;
 
@@ -146,7 +159,7 @@ void RunGetPicture(MODELIST RunMode)
 		if ( (CreatePicture == NULL) && (CreatePictureW == NULL) ){
 			printout(L" CreatePicture not found.\r\n");
 		}else{
-			if ( CreatePictureW != NULL ){
+			if ( UseUNICODE && (CreatePictureW != NULL) ){
 				result = CreatePictureW(targetname, SUSIE_DEST_DISK, &HBInfo, &HBm, NULL, NULL, 0);
 			}else{
 				result = CreatePicture(targetnameA, SUSIE_DEST_DISK, &HBInfo, &HBm, NULL, NULL, 0);
@@ -168,23 +181,9 @@ void RunShowPicture(MODELIST RunMode)
 	int result = SUSIEERROR_NOTSUPPORT;
 	HLOCAL HBInfo, HBm;
 
-	if ( GetPictureW != NULL ){
-		HBInfo = HBm = NULL;
-		result = GetPictureW(sourcename, 0, SUSIE_SOURCE_DISK, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
-		if ( result != SUSIEERROR_NOERROR ){
-			printout(L"GetPictureW");
-			PluginResult(result);
-		}
-	}
-	if ( result != SUSIEERROR_NOERROR ){
-		HBInfo = HBm = NULL;
-		result = GetPicture(sourcenameA, 0, SUSIE_SOURCE_DISK, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
-		if ( result != SUSIEERROR_NOERROR ){
-			printout(L"GetPicture");
-			PluginResult(result);
-			return;
-		}
-	}
+	result = DoGetPicture(RunMode, HBInfo, HBm);
+	if ( result != SUSIEERROR_NOERROR ) return;
+
 	ShowPictureInfo(HBInfo, HBm);
 	ShowImageToConsole(HBInfo, HBm);
 	LocalFree(HBInfo);
@@ -296,7 +295,7 @@ void RunArchive(MODELIST RunMode)
 		strcpy(targetnameA, ".");
 	}
 
-	if ( GetArchiveInfoW != NULL ) for(;;){
+	if ( UseUNICODE && (GetArchiveInfoW != NULL) ) for(;;){
 		hInfFile = INVALID_HANDLE_VALUE;
 		result = GetArchiveInfoW(sourcename, 0, SUSIE_SOURCE_DISK, &hInfFile);
 		if ( result != SUSIEERROR_NOERROR ){
@@ -461,7 +460,7 @@ void RunArchive(MODELIST RunMode)
 					}else{
 						printoutf(L"%s %10d ", timebuf, finfo->filesize);
 					}
-					printoutfA("%s%s\r\n", finfo->path,  finfo->filename);
+					printoutf(L"%hs%hs\r\n", finfo->path,  finfo->filename);
 					break;
 			}
 		}

@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#define COPYRIGHT UNICODESTR(APPNAME) L" Version 0.3 (c)TORO"
+#define COPYRIGHT UNICODESTR(APPNAME) L" Version " UNICODESTR(InfoVer) L" (c)TORO"
 
 enum MODELIST { MODE_DEFAULT = -1, MODE_ABOUT = 0, MODE_CONFIG, MODE_RUN, MODE_GETPICTURE, MODE_GETPREVIEW, MODE_GETFILE, MODE_TEST, MODE_TEST_ZEROSIZE};
 
@@ -80,11 +80,14 @@ extern CREATEPICTUREW CreatePictureW;
 extern WCHAR spipath[MAX_PATH], xpipath[MAX_PATH];
 extern WCHAR sourcename[EXMAX_PATH], targetname[EXMAX_PATH], archiveitem[EXMAX_PATH];
 extern char sourcenameA[EXMAX_PATH], targetnameA[EXMAX_PATH], archiveitemA[EXMAX_PATH];
+
+#define testmem_zerosize 2
 extern int testmem, testdisk;
 extern char *SourceImage;
 extern DWORD SourceSize;
 extern BOOL UseCreatePicture;
 extern BOOL UseSubdirectory;
+extern BOOL UseUNICODE;
 
 extern BOOL LoadPlugin(WCHAR *filename);
 #define FreePlugin() FreeLibrary(hPlugin);
@@ -108,11 +111,8 @@ extern void SetColor(DWORD color);
 #define ResetColor() SetColor(CONSOLE_DEFAULT_COLOR)
 
 extern void USEFASTCALL printout(const WCHAR *str);
-extern void USEFASTCALL printoutA(const char *str);
 extern void printoutf(const WCHAR *message, ...);
-extern void printoutfA(const char *message, ...);
 extern void printoutfColor(DWORD color, const WCHAR *message, ...);
-extern void printoutfColorA(DWORD color, const char *message, ...);
 
 extern BOOL ShowImageToConsole(HLOCAL HBInfo, HLOCAL HBm);
 

@@ -40,19 +40,6 @@ void ShowComment(const WCHAR *message, ...)
 	CommentCount++;
 }
 
-void ShowCommentA(const char *message, ...)
-{
-	char buf[0x800];
-	va_list argptr;
-
-	SetColor(COLOR_COMMENT);
-	va_start(argptr, message);
-	wvsprintfA(buf, message, argptr);
-	printoutA(buf);
-	ResetColor();
-	CommentCount++;
-}
-
 const WCHAR *errortext[] = {
 	L"Not Support",
 	L"no error",
@@ -79,7 +66,6 @@ void PluginResult(int result)
 	}else if ( (result >= 101) && (result <= 110) ){
 		text = errortext[result - 99];
 	}else{
-
 		text = L" ● 未定義コード";
 		CommentCount++;
 	}
@@ -91,7 +77,7 @@ void LoadSourceImage(void)
 	HANDLE hFile;
 	DWORD sizeL, sizeH, size;
 
-	if ( testmem == 10 ){
+	if ( testmem == testmem_zerosize ){
 		SourceSize = 0;
 		SourceAllocSize = 0;
 
@@ -298,22 +284,24 @@ void TestGetPictureMain(GETPICTURE TestApi)
 	char buf[MAX_PATH];
 	HLOCAL HBInfo, HBm;
 
-	printout(L"SOURCE_DISK(non-existence)");
-	strcpy(buf, "dummy_file_name");
-	HBInfo = HBm = INVALID_HANDLE_VALUE;
-	result = TestApi(buf, 0, SUSIE_SOURCE_DISK, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
-	CheckInvaildFilename(result);
+	if ( testdisk ){
+		printout(L"SOURCE_DISK(non-existence)");
+		strcpy(buf, "dummy_file_name");
+		HBInfo = HBm = INVALID_HANDLE_VALUE;
+		result = TestApi(buf, 0, SUSIE_SOURCE_DISK, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
+		CheckInvaildFilename(result);
 
-	printout(L"SOURCE_DISK");
-	strcpy(buf, sourcenameA);
-	HBInfo = HBm = INVALID_HANDLE_VALUE;
-	result = TestApi(buf, 0, SUSIE_SOURCE_DISK, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
-	PluginResult(result);
-	if ( strcmp(buf, sourcenameA) != 0 ){
-		ShowComment(L" ● filename 破損\r\n");
-	}
-	if ( result == SUSIEERROR_NOERROR ){
-		TestGetPicture_check(HBInfo, HBm);
+		printout(L"SOURCE_DISK");
+		strcpy(buf, sourcenameA);
+		HBInfo = HBm = INVALID_HANDLE_VALUE;
+		result = TestApi(buf, 0, SUSIE_SOURCE_DISK, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
+		PluginResult(result);
+		if ( strcmp(buf, sourcenameA) != 0 ){
+			ShowComment(L" ● filename 破損\r\n");
+		}
+		if ( result == SUSIEERROR_NOERROR ){
+			TestGetPicture_check(HBInfo, HBm);
+		}
 	}
 
 	if ( testmem ){
@@ -342,16 +330,18 @@ void TestGetPictureWMain(GETPICTUREW TestApiW)
 	result = TestApiW(buf, 0, SUSIE_SOURCE_DISK, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
 	CheckInvaildFilename(result);
 
-	printout(L"SOURCE_DISK");
-	strcpyW(buf, sourcename);
-	HBInfo = HBm = INVALID_HANDLE_VALUE;
-	result = TestApiW(buf, 0, SUSIE_SOURCE_DISK, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
-	PluginResult(result);
-	if ( strcmpW(buf, sourcename) != 0 ){
-		ShowComment(L" ● filename が破損\r\n");
-	}
-	if ( result == SUSIEERROR_NOERROR ){
-		TestGetPicture_check(HBInfo, HBm);
+	if ( testdisk ){
+		printout(L"SOURCE_DISK");
+		strcpyW(buf, sourcename);
+		HBInfo = HBm = INVALID_HANDLE_VALUE;
+		result = TestApiW(buf, 0, SUSIE_SOURCE_DISK, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
+		PluginResult(result);
+		if ( strcmpW(buf, sourcename) != 0 ){
+			ShowComment(L" ● filename が破損\r\n");
+		}
+		if ( result == SUSIEERROR_NOERROR ){
+			TestGetPicture_check(HBInfo, HBm);
+		}
 	}
 
 	if ( testmem ){
@@ -377,7 +367,7 @@ void TestGetPicture(void)
 		ShowComment(L" ● GetPicture がない\r\n");
 	}
 
-	if ( GetPictureW != NULL ){
+	if ( UseUNICODE && (GetPictureW != NULL) ){
 		PrintAPIname("GetPictureW(LPCWSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData)");
 		TestGetPictureWMain(GetPictureW);
 	}
@@ -392,7 +382,7 @@ void TestGetPreview(void)
 		ShowComment(L" ● GetPreview がない\r\n");
 	}
 
-	if ( GetPreviewW != NULL ){
+	if ( UseUNICODE && (GetPreviewW != NULL) ){
 		PrintAPIname("GetPreviewW(LPCWSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData)");
 		TestGetPictureWMain(GetPreviewW);
 	}
@@ -449,30 +439,35 @@ void TestGetPictureInfo_check(struct PictureInfo *pinfo)
 		if ( size == 0 ){
 			ShowComment(L" ● hInfo の大きさが 0 \r\n");
 		}else{
+			WCHAR *infoW;
+			DWORD sizeW;
+			UINT codepage;
+
 			infolast = (char *)memchr(info, 0, size);
 			if ( infolast == NULL ){
 				ShowComment(L" ● hInfo が \0 終端でない \r\n");
 				info[size - 1] = '\0';
 			}
-			if ( (size >= 4) && (memcmp(info, UTF8HEADER, UTF8HEADERSIZE) == 0) ){
-				WCHAR *infoW;
-				DWORD sizeW;
 
+			if ( (size >= 4) && (memcmp(info, UTF8HEADER, UTF8HEADERSIZE) == 0) ){
 				info += UTF8HEADERSIZE;
 				size -= UTF8HEADERSIZE;
 				printout(L"   (utf-8): ");
-				sizeW = MultiByteToWideChar(CP_UTF8, 0, info, size, NULL, 0);
-				infoW = (WCHAR *)malloc(sizeW);
-				if ( infoW != NULL ){
-					MultiByteToWideChar(CP_UTF8, 0, info, size, infoW, sizeW);
-					printout(infoW);
-					free(infoW);
-				}
+				codepage = CP_UTF8;
 			}else{
 				printout(L"   (ShiftJIS): ");
-				printoutA(info);
+				codepage = CP_ACP;
 			}
-			printout(L"\r\n");
+
+			sizeW = MultiByteToWideChar(codepage, 0, info, size, NULL, 0);
+			infoW = (WCHAR *)malloc(sizeW);
+			if ( infoW != NULL ){
+				MultiByteToWideChar(codepage, 0, info, size, infoW, sizeW);
+				printout(infoW);
+				free(infoW);
+			}else{
+				printout(L"memory error");
+			}
 		}
 		LocalUnlock(pinfo->hInfo);
 		LocalFree(pinfo->hInfo);
@@ -489,21 +484,24 @@ void TestGetPictureInfo(void)
 
 		PrintAPIname("GetPictureInfo(LPCSTR buf, LONG_PTR len, unsigned int flag, struct PictureInfo *lpInfo)");
 
-		printout(L"SOURCE_DISK(non-existence)");
-		strcpy(buf, "dummy_file_name");
-		result = GetPictureInfo(buf, 0, SUSIE_SOURCE_DISK, &pinfo);
-		CheckInvaildFilename(result);
+		if ( testdisk ){
+			printout(L"SOURCE_DISK(non-existence)");
+			strcpy(buf, "dummy_file_name");
+			result = GetPictureInfo(buf, 0, SUSIE_SOURCE_DISK, &pinfo);
+			CheckInvaildFilename(result);
 
-		printout(L"SOURCE_DISK");
-		strcpy(buf, sourcenameA);
-		memset(&pinfo, WRITECHECK_BYTE, sizeof(pinfo));
-		result = GetPictureInfo(buf, 0, SUSIE_SOURCE_DISK, &pinfo);
-		if ( strcmp(buf, sourcenameA) != 0 ){
-			ShowComment(L" ● filename 破損\r\n");
+			printout(L"SOURCE_DISK");
+			strcpy(buf, sourcenameA);
+			memset(&pinfo, WRITECHECK_BYTE, sizeof(pinfo));
+			result = GetPictureInfo(buf, 0, SUSIE_SOURCE_DISK, &pinfo);
+			if ( strcmp(buf, sourcenameA) != 0 ){
+				ShowComment(L" ● filename 破損\r\n");
+			}
+			if ( result == SUSIEERROR_NOERROR ){
+				TestGetPictureInfo_check(&pinfo);
+			}
 		}
-		if ( result == SUSIEERROR_NOERROR ){
-			TestGetPictureInfo_check(&pinfo);
-		}
+
 		if ( testmem ){
 			printout(L"SOURCE_MEM");
 			result = GetPictureInfo(SourceImage, SourceSize, SUSIE_SOURCE_MEM, &pinfo);
@@ -517,27 +515,29 @@ void TestGetPictureInfo(void)
 		}
 	}
 
-	if ( GetPictureInfoW != NULL ){
+	if ( UseUNICODE && (GetPictureInfoW != NULL) ){
 		int result;
 		WCHAR buf[MAX_PATH];
 
 		PrintAPIname("GetPictureInfoW(LPCWSTR buf, LONG_PTR len, unsigned int flag, struct PictureInfo *lpInfo)");
 
-		printout(L"SOURCE_DISK(non-existence)");
-		strcpyW(buf, L"dummy_file_name");
-		result = GetPictureInfoW(buf, 0, SUSIE_SOURCE_DISK, &pinfo);
-		CheckInvaildFilename(result);
+		if ( testdisk ){
+			printout(L"SOURCE_DISK(non-existence)");
+			strcpyW(buf, L"dummy_file_name");
+			result = GetPictureInfoW(buf, 0, SUSIE_SOURCE_DISK, &pinfo);
+			CheckInvaildFilename(result);
 
-		printout(L"SOURCE_DISK");
-		strcpyW(buf, sourcename);
-		memset(&pinfo, WRITECHECK_BYTE, sizeof(pinfo));
-		result = GetPictureInfoW(buf, 0, SUSIE_SOURCE_DISK, &pinfo);
-		PluginResult(result);
-		if ( strcmpW(buf, sourcename) != 0 ){
-			ShowComment(L" ● filename 破損\r\n");
-		}
-		if ( result == SUSIEERROR_NOERROR ){
-			TestGetPictureInfo_check(&pinfo);
+			printout(L"SOURCE_DISK");
+			strcpyW(buf, sourcename);
+			memset(&pinfo, WRITECHECK_BYTE, sizeof(pinfo));
+			result = GetPictureInfoW(buf, 0, SUSIE_SOURCE_DISK, &pinfo);
+			PluginResult(result);
+			if ( strcmpW(buf, sourcename) != 0 ){
+				ShowComment(L" ● filename 破損\r\n");
+			}
+			if ( result == SUSIEERROR_NOERROR ){
+				TestGetPictureInfo_check(&pinfo);
+			}
 		}
 
 		if ( testmem ){
@@ -564,16 +564,6 @@ void TestGetPluginInfo_noinfo(int infono)
 	}
 }
 
-void TestGetPluginInfo_noinfo_short(int infono)
-{
-	if ( infono < 4 ){
-		ShowComment(L" ● infono=%d: infono は 0-3 まで必須\r\n", infono);
-	}
-	if ( (infono > 2) && (infono & 1) ){
-		ShowComment(L" ● infono=%d: 2n+1 があるのに 2n+2 がない\r\n", infono);
-	}
-}
-
 void TestGetPluginInfo(void)
 {
 	BOOL unicode = FALSE;
@@ -587,7 +577,7 @@ void TestGetPluginInfo(void)
 			}
 			PrintAPIname("GetPluginInfo(int infono, LPSTR buf, int buflen)");
 		}else{ // unicode
-			if ( GetPluginInfoW == NULL ) break;
+			if ( !UseUNICODE || (GetPluginInfoW == NULL) ) break;
 
 			PrintAPIname("GetPluginInfoW(int infono, LPWSTR buf, int buflen)");
 		}
@@ -671,7 +661,7 @@ void TestGetPluginInfo(void)
 				}else if ( strcmpW(bufW, L"00IN") == 0 ){
 					memo = L" (Import filter)";
 				}else if ( strcmpW(bufW, L"T0XN") == 0 ){
-					memo = L" \r\n(AtoB Converter export Plug-in)\r\n";
+					memo = L" (AtoB Converter export Plug-in)";
 				}else{
 					ShowComment(L" ● 不明プラグインバージョン\r\n");
 				}
@@ -729,7 +719,7 @@ void TestIsSupported(void)
 			PrintAPIname("IsSupported(LPCSTR filename, void *dw)");
 			strcpy(bufA, "non-existence");
 		}else{ // unicode
-			if ( IsSupportedW == NULL ) break;
+			if ( !UseUNICODE || (IsSupportedW == NULL) ) break;
 
 			PrintAPIname("IsSupportedW(LPCSTR filename, void *dw)");
 			strcpyW(bufW, L"non-existence");
@@ -739,7 +729,7 @@ void TestIsSupported(void)
 		if ( result ) ShowComment(L" ● 存在しないファイルでも対応扱い\r\n");
 
 		printoutf(L" filename is file handle(bad handle):");
-		result = PrintSupport(IsSupportedT(unicode, bufA, bufW, (void *)0x7f7f));
+		result = PrintSupport(IsSupportedT(unicode, bufA, bufW, (void *)WRITECHECK_BYTE));
 		if ( result ) ShowComment(L" ● 存在しないハンドルでも対応扱い\r\n");
 
 		if ( unicode == FALSE ){ // ansi
@@ -792,13 +782,13 @@ void TestGetArchiveInfo_SUSIE_FINFO(SUSIE_FINFO *finfo, UINT infosize)
 			}
 			break;
 		}
-		printoutfA("-#%d-method: %s\r\n", count, finfo->method);
+		printoutf(L"-#%d-method: %hs\r\n", count, finfo->method);
 		printoutf(L" #%d position: %lu\r\n", count, finfo->position);
 		printoutf(L" #%d compsize: %lu\r\n", count, finfo->compsize);
 		printoutf(L" #%d filesize: %lu\r\n", count, finfo->filesize);
 		printoutf(L" #%d timestamp: %s\r\n", count, GetTimeStrings(timebuf, finfo->timestamp));
-		printoutfA(" #%d path: '%s'\r\n", count, finfo->path);
-		printoutfA(" #%d filename: '%s'\r\n", count, finfo->filename);
+		printoutf(L" #%d path: '%hs'\r\n", count, finfo->path);
+		printoutf(L" #%d filename: '%hs'\r\n", count, finfo->filename);
 		printoutf(L" #%d crc: %u\r\n", count, finfo->crc);
 
 		finfo++;
@@ -813,7 +803,7 @@ void TestGetArchiveInfo_SUSIE_FINFO(SUSIE_FINFO *finfo, UINT infosize)
 void Compare_SUSIE_FINFO_one(SUSIE_FINFO *finfo1, SUSIE_FINFO *finfo2, int count)
 {
 	if ( strcmp((const char *)finfo1->method, (const char *)finfo2->method) != 0 ){
-		ShowCommentA(" ● #%d method 不一致(%s != %s)\r\n", count, finfo1->method, finfo2->method);
+		ShowComment(L" ● #%d method 不一致(%hs != %hs)\r\n", count, finfo1->method, finfo2->method);
 	}
 	if ( finfo1->position != finfo2->position ){
 		ShowComment(L" ● #%d position 不一致(%d != %d)\r\n", count, finfo1->position, finfo2->position);
@@ -831,7 +821,7 @@ void Compare_SUSIE_FINFO_one(SUSIE_FINFO *finfo1, SUSIE_FINFO *finfo2, int count
 		ShowComment(L" ● #%d path 不一致\r\n", count);
 	}
 	if ( strcmp(finfo1->filename, finfo2->filename) != 0 ){
-		ShowCommentA(" ● #%d filename 不一致(%s != %s)\r\n", count, finfo1->filename, finfo2->filename);
+		ShowComment(L" ● #%d filename 不一致(%hs != %hs)\r\n", count, finfo1->filename, finfo2->filename);
 	}
 	if ( finfo1->crc != finfo2->crc ){
 		ShowComment(L" ● #%d crc 不一致\r\n", count);
@@ -879,7 +869,7 @@ void TestGetArchiveInfo_SUSIE_FINFOW(SUSIE_FINFOW *finfo, UINT infosize)
 			}
 			break;
 		}
-		printoutfA("-#%d-method: %s\r\n", count, finfo->method);
+		printoutf(L"-#%d-method: %hs\r\n", count, finfo->method);
 		printoutf(L" #%d position: %lu\r\n", count, finfo->position);
 		printoutf(L" #%d compsize: %lu\r\n", count, finfo->compsize);
 		printoutf(L" #%d filesize: %lu\r\n", count, finfo->filesize);
@@ -900,13 +890,13 @@ void TestGetArchiveInfo_SUSIE_FINFOW(SUSIE_FINFOW *finfo, UINT infosize)
 void Compare_SUSIE_FINFOW_one(SUSIE_FINFOW *finfo1, SUSIE_FINFOW *finfo2, int count)
 {
 	if ( strcmp((const char *)finfo1->method, (const char *)finfo2->method) != 0 ){
-		ShowComment(L" ● #%d method 不一致\r\n", count);
+		ShowComment(L" ● #%d method 不一致(%S != %S)\r\n", count, finfo1->method, finfo2->method);
 	}
 	if ( finfo1->position != finfo2->position ){
-		ShowComment(L" ● #%d position 不一致\r\n", count);
+		ShowComment(L" ● #%d position 不一致(%d != %d)\r\n", count, finfo1->position, finfo2->position);
 	}
 	if ( finfo1->compsize != finfo2->compsize ){
-		ShowComment(L" ● #%d compsize 不一致\r\n", count);
+		ShowComment(L" ● #%d compsize 不一致(%d != %d)\r\n", count, finfo1->compsize, finfo2->compsize);
 	}
 	if ( finfo1->filesize != finfo2->filesize ){
 		ShowComment(L" ● #%d filesize 不一致(%d != %d)\r\n", count, finfo1->filesize, finfo2->filesize);
@@ -915,10 +905,10 @@ void Compare_SUSIE_FINFOW_one(SUSIE_FINFOW *finfo1, SUSIE_FINFOW *finfo2, int co
 		ShowComment(L" ● #%d timestamp 不一致\r\n", count);
 	}
 	if ( strcmpW(finfo1->path, finfo2->path) != 0 ){
-		ShowComment(L" ● #%d path 不一致\r\n", count);
+		ShowComment(L" ● #%d path 不一致(%s != %s)\r\n", count, finfo1->path, finfo2->path);
 	}
 	if ( strcmpW(finfo1->filename, finfo2->filename) != 0 ){
-		ShowComment(L" ● #%d filename 不一致\r\n", count);
+		ShowComment(L" ● #%d filename 不一致(%s != %s)\r\n", count, finfo1->filename, finfo2->filename);
 	}
 	if ( finfo1->crc != finfo2->crc ){
 		ShowComment(L" ● #%d crc 不一致\r\n", count);
@@ -963,27 +953,27 @@ void Compare_SUSIE_FINFO_AW(SUSIE_FINFO *finfo1, SUSIE_FINFOW *finfo2, UINT info
 			break;
 		}
 		if ( finfo1->position != finfo2->position ){
-			ShowComment(L" ● #%d position 不一致\r\n", count);
+			ShowComment(L" ● #%d position 不一致(%d != %d)\r\n", count, finfo1->position, finfo2->position);
 		}
 		if ( finfo1->compsize != finfo2->compsize ){
-			ShowComment(L" ● #%d compsize 不一致\r\n", count);
+			ShowComment(L" ● #%d compsize 不一致(%d != %d)\r\n", count, finfo1->compsize, finfo2->compsize);
 		}
 		if ( finfo1->filesize != finfo2->filesize ){
 			ShowComment(L" ● #%d filesize 不一致(%d != %d)\r\n", count, finfo1->filesize, finfo2->filesize);
 		}
 		if ( finfo1->timestamp != finfo2->timestamp ){
-			ShowComment(L" ● #%d timestamp 不一致\r\n", count);
+			ShowComment(L" ● #%d timestamp 不一致(%d != %d)\r\n", count, finfo1->timestamp, finfo2->timestamp);
 		}
 		AnsiToUnicode(finfo1->path, text, SUSIE_PATH_MAX);
 		if ( strcmpW(text, finfo2->path) != 0 ){
-			ShowComment(L" ● #%d path 不一致\r\n", count);
+			ShowComment(L" ● #%d path 不一致(%s != %s)\r\n", count, text, finfo2->path);
 		}
 		AnsiToUnicode(finfo1->filename, text, SUSIE_PATH_MAX);
 		if ( strcmpW(text, finfo2->filename) != 0 ){
-			ShowComment(L" ● #%d filename 不一致\r\n", count);
+			ShowComment(L" ● #%d filename 不一致(%s != %s)\r\n", count, text, finfo2->filename);
 		}
 		if ( finfo1->crc != finfo2->crc ){
-			ShowComment(L" ● #%d crc 不一致\r\n", count);
+			ShowComment(L" ● #%d crc 不一致(%d, %d)\r\n", count, finfo1->crc, finfo2->crc);
 		}
 	}
 	printout(L"X\r\n");
@@ -1001,35 +991,37 @@ void TestGetArchiveInfo(void)
 
 		PrintAPIname("GetArchiveInfo(LPCSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *lphInf)");
 
-		printout(L"SOURCE_DISK(non-existence)");
-		strcpy(buf, "dummy_file_name");
-		hInfFile = INVALID_HANDLE_VALUE;
-		result = GetArchiveInfo(buf, 0, SUSIE_SOURCE_DISK, &hInfFile);
-		CheckInvaildFilename(result);
-		if ( hInfFile != NULL ){
-			ShowComment(L" ● ソースファイルが無いときは *lphInf = NULL にする必要がある\r\n");
-		}
-
-		printout(L"SOURCE_DISK(non-existence)");
-		strcpy(buf, sourcenameA);
-		hInfFile = INVALID_HANDLE_VALUE;
-		result = GetArchiveInfo(buf, 0, SUSIE_SOURCE_DISK, &hInfFile);
-		PluginResult(result);
-		if ( strcmp(buf, sourcenameA) != 0 ){
-			ShowComment(L" ● filename 破損\r\n");
-		}
-		if ( result != SUSIEERROR_NOERROR ){
+		if ( testdisk ){
+			printout(L"SOURCE_DISK(non-existence)");
+			strcpy(buf, "dummy_file_name");
+			hInfFile = INVALID_HANDLE_VALUE;
+			result = GetArchiveInfo(buf, 0, SUSIE_SOURCE_DISK, &hInfFile);
+			CheckInvaildFilename(result);
 			if ( hInfFile != NULL ){
-				ShowComment(L" ● エラーのときは *lphInf = NULL にする必要がある\r\n");
+				ShowComment(L" ● ソースファイルが無いときは *lphInf = NULL にする必要がある\r\n");
 			}
-		}else{
-			if ( hInfFile == NULL ){
-				ShowComment(L" ● 正常終了なのに *lphInf == NULL\r\n");
+
+			printout(L"SOURCE_DISK(non-existence)");
+			strcpy(buf, sourcenameA);
+			hInfFile = INVALID_HANDLE_VALUE;
+			result = GetArchiveInfo(buf, 0, SUSIE_SOURCE_DISK, &hInfFile);
+			PluginResult(result);
+			if ( strcmp(buf, sourcenameA) != 0 ){
+				ShowComment(L" ● filename 破損\r\n");
+			}
+			if ( result != SUSIEERROR_NOERROR ){
+				if ( hInfFile != NULL ){
+					ShowComment(L" ● エラーのときは *lphInf = NULL にする必要がある\r\n");
+				}
 			}else{
-				ArchiveInfo = hInfFile;
-				finfo_file = (SUSIE_FINFO *)LocalLock(hInfFile);
-				infosize_file = LocalSize(hInfFile);
-				TestGetArchiveInfo_SUSIE_FINFO(finfo_file, infosize_file);
+				if ( hInfFile == NULL ){
+					ShowComment(L" ● 正常終了なのに *lphInf == NULL\r\n");
+				}else{
+					ArchiveInfo = hInfFile;
+					finfo_file = (SUSIE_FINFO *)LocalLock(hInfFile);
+					infosize_file = LocalSize(hInfFile);
+					TestGetArchiveInfo_SUSIE_FINFO(finfo_file, infosize_file);
+				}
 			}
 		}
 
@@ -1065,7 +1057,7 @@ void TestGetArchiveInfo(void)
 			}
 		}
 	}
-	if ( GetArchiveInfoW != NULL ){
+	if ( UseUNICODE && (GetArchiveInfoW != NULL) ){
 		int result;
 		WCHAR buf[MAX_PATH];
 		HLOCAL hInfFile, hInfMem;
@@ -1073,35 +1065,37 @@ void TestGetArchiveInfo(void)
 
 		PrintAPIname("GetArchiveInfoW(LPCWSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *lphInf)");
 
-		printout(L"SOURCE_DISK(non-existence)");
-		strcpyW(buf, L"dummy_file_name");
-		hInfFile = INVALID_HANDLE_VALUE;
-		result = GetArchiveInfoW(buf, 0, SUSIE_SOURCE_DISK, &hInfFile);
-		CheckInvaildFilename(result);
-		if ( hInfFile != NULL ){
-			ShowComment(L" ● ソースファイルが無いときは *lphInf = NULL にする必要がある\r\n");
-		}
-
-		printout(L"SOURCE_DISK");
-		strcpyW(buf, sourcename);
-		hInfFile = INVALID_HANDLE_VALUE;
-		result = GetArchiveInfoW(buf, 0, SUSIE_SOURCE_DISK, &hInfFile);
-		PluginResult(result);
-		if ( strcmpW(buf, sourcename) != 0 ){
-			ShowComment(L" ● filename 破損\r\n");
-		}
-		if ( result != SUSIEERROR_NOERROR ){
+		if ( testdisk ){
+			printout(L"SOURCE_DISK(non-existence)");
+			strcpyW(buf, L"dummy_file_name");
+			hInfFile = INVALID_HANDLE_VALUE;
+			result = GetArchiveInfoW(buf, 0, SUSIE_SOURCE_DISK, &hInfFile);
+			CheckInvaildFilename(result);
 			if ( hInfFile != NULL ){
-				ShowComment(L" ● エラーのときは *lphInf = NULL にする必要がある\r\n");
+				ShowComment(L" ● ソースファイルが無いときは *lphInf = NULL にする必要がある\r\n");
 			}
-		}else{
-			if ( hInfFile == NULL ){
-				ShowComment(L" ● 正常終了なのに *lphInf == NULL\r\n");
+
+			printout(L"SOURCE_DISK");
+			strcpyW(buf, sourcename);
+			hInfFile = INVALID_HANDLE_VALUE;
+			result = GetArchiveInfoW(buf, 0, SUSIE_SOURCE_DISK, &hInfFile);
+			PluginResult(result);
+			if ( strcmpW(buf, sourcename) != 0 ){
+				ShowComment(L" ● filename 破損\r\n");
+			}
+			if ( result != SUSIEERROR_NOERROR ){
+				if ( hInfFile != NULL ){
+					ShowComment(L" ● エラーのときは *lphInf = NULL にする必要がある\r\n");
+				}
 			}else{
-				ArchiveInfoW = hInfFile;
-				finfo_fileW = (SUSIE_FINFOW *)LocalLock(hInfFile);
-				infosize_fileW = LocalSize(hInfFile);
-				TestGetArchiveInfo_SUSIE_FINFOW(finfo_fileW, infosize_fileW);
+				if ( hInfFile == NULL ){
+					ShowComment(L" ● 正常終了なのに *lphInf == NULL\r\n");
+				}else{
+					ArchiveInfoW = hInfFile;
+					finfo_fileW = (SUSIE_FINFOW *)LocalLock(hInfFile);
+					infosize_fileW = LocalSize(hInfFile);
+					TestGetArchiveInfo_SUSIE_FINFOW(finfo_fileW, infosize_fileW);
+				}
 			}
 		}
 
@@ -1162,54 +1156,54 @@ void TestGetFileInfo(void)
 
 		if ( finfo_file == NULL ){
 			ShowComment(L" ● GetArchiveInfoが成功していないのでテストできない\r\n");
-
 		}else{
-
-		OldCommentCount = CommentCount;
-		finfoAptr = finfo_file;
-		for ( count = 0; count < maxcount ; finfoAptr++, count++ ){
-			if ( finfoAptr->method[0] == '\0' ) break;
-			strcpy(textA, finfoAptr->path);
-			// 末尾が「表」の考慮をしていない
-			if ( (textA[0] != '\0') && (textA[strlen(textA) - 1] != '\\') ){
-				strcat(textA, "\\");
-			}
-			strcat(textA, finfoAptr->filename);
-			memset(&finfoA, WRITECHECK_BYTE, sizeof(finfoA));
-			result_file = GetFileInfo(sourcenameA, 0, textA, SUSIE_SOURCE_DISK, &finfoA);
-			if ( result_file == SUSIEERROR_NOERROR ){
-				printout(L"d");
-				Compare_SUSIE_FINFO_one(finfoAptr, &finfoA, count);
-				check_file++;
-			}
-			if ( testmem ){
-
-				memset(&finfoA, WRITECHECK_BYTE, sizeof(finfoA));
-				result_mem = GetFileInfo(SourceImage, SourceSize, textA, SUSIE_SOURCE_MEM, &finfoA);
-				if ( result_mem == SUSIEERROR_NOERROR ){
-					printout(L"m");
-					Compare_SUSIE_FINFO_one(finfoAptr, &finfoA, count);
-					check_mem++;
-				}else if ( result_file != SUSIEERROR_NOERROR ){
-					ShowCommentA("\r\n ● #%d(%s) 取得不可\r\n", count, textA);
+			printout(L" Compare GetFileInfo with GetArchiveInfo\r\n");
+			OldCommentCount = CommentCount;
+			finfoAptr = finfo_file;
+			for ( count = 0; count < maxcount ; finfoAptr++, count++ ){
+				if ( finfoAptr->method[0] == '\0' ) break;
+				strcpy(textA, finfoAptr->path);
+				// 末尾が「表」の考慮をしていない
+				if ( (textA[0] != '\0') && (textA[strlen(textA) - 1] != '\\') ){
+					strcat(textA, "\\");
+				}
+				strcat(textA, finfoAptr->filename);
+				if ( testdisk ){
+					memset(&finfoA, WRITECHECK_BYTE, sizeof(finfoA));
+					result_file = GetFileInfo(sourcenameA, 0, textA, SUSIE_SOURCE_DISK, &finfoA);
+					if ( result_file == SUSIEERROR_NOERROR ){
+						printout(L"d");
+						Compare_SUSIE_FINFO_one(&finfoA, finfoAptr, count);
+						check_file++;
+					}
+				}
+				if ( testmem ){
+					memset(&finfoA, WRITECHECK_BYTE, sizeof(finfoA));
+					result_mem = GetFileInfo(SourceImage, SourceSize, textA, SUSIE_SOURCE_MEM, &finfoA);
+					if ( result_mem == SUSIEERROR_NOERROR ){
+						printout(L"m");
+						Compare_SUSIE_FINFO_one(&finfoA, finfoAptr, count);
+						check_mem++;
+					}else if ( result_file != SUSIEERROR_NOERROR ){
+						ShowComment(L"\r\n ● #%d(%hs) 取得不可(%d)\r\n", count, textA, result_file);
+					}
 				}
 			}
-		}
-		if ( CommentCount == OldCommentCount ){
-			printoutf(L" -> All match( file:%d mem:%d / all:%d)\r\n",
-					check_file, check_mem, count);
-		}
+			if ( CommentCount == OldCommentCount ){
+				printoutf(L" -> All match( file:%d mem:%d / all:%d)\r\n",
+						check_file, check_mem, count);
+			}
 			if ( testmem ){
-		if ( memcmp(SourceImage, CompareSourceImage, SourceAllocSize) != 0 ){
-			ShowComment(L" ● buf 破損\r\n");
-		}
-		}
+				if ( memcmp(SourceImage, CompareSourceImage, SourceAllocSize) != 0 ){
+					ShowComment(L" ● buf 破損\r\n");
+				}
+			}
 		}
 	}else{
 		printout(L" ● GetFileInfo がない\r\n");
 	}
 
-	if ( GetFileInfoW != NULL ){
+	if ( UseUNICODE && (GetFileInfoW != NULL) ){
 		int result_file, result_mem;
 		int check_file = 0, check_mem = 0;
 		WCHAR textW[SUSIE_PATH_MAX * 2];
@@ -1221,44 +1215,46 @@ void TestGetFileInfo(void)
 			ShowComment(L" ● GetArchiveInfoWが成功していないのでテストできない\r\n");
 
 		}else{
-
-		OldCommentCount = CommentCount;
-		finfoWptr = finfo_fileW;
-		for ( count = 0; count < maxcount ; finfoWptr++, count++ ){
-			if ( finfoWptr->method[0] == '\0' ) break;
-			strcpyW(textW, finfoWptr->path);
-			if ( (textW[0] != '\0') && (textW[strlenW(textW) - 1] != '\\') ){
-				strcatW(textW, L"\\");
-			}
-			strcatW(textW, finfoWptr->filename);
-			memset(&finfoW, WRITECHECK_BYTE, sizeof(finfoW));
-			result_file = GetFileInfoW(sourcename, 0, textW, SUSIE_SOURCE_DISK, &finfoW);
-			if ( result_file == SUSIEERROR_NOERROR ){
-				printout(L"d");
-				Compare_SUSIE_FINFOW_one(finfoWptr, &finfoW, count);
-				check_file++;
-			}
-			if ( testmem ){
-				memset(&finfoW, WRITECHECK_BYTE, sizeof(finfoW));
-				result_mem = GetFileInfoW((const WCHAR *)SourceImage, SourceSize, textW, SUSIE_SOURCE_MEM, &finfoW);
-				if ( result_mem == SUSIEERROR_NOERROR ){
-					printout(L"m");
-					Compare_SUSIE_FINFOW_one(finfoWptr, &finfoW, count);
-					check_mem++;
-				}else if ( result_file != SUSIEERROR_NOERROR ){
-					ShowComment(L" ● #%d(%s) 取得不可\r\n", count, textW);
+			printout(L" Compare GetFileInfoW with GetArchiveInfoW\r\n");
+			OldCommentCount = CommentCount;
+			finfoWptr = finfo_fileW;
+			for ( count = 0; count < maxcount ; finfoWptr++, count++ ){
+				if ( finfoWptr->method[0] == '\0' ) break;
+				strcpyW(textW, finfoWptr->path);
+				if ( (textW[0] != '\0') && (textW[strlenW(textW) - 1] != '\\') ){
+					strcatW(textW, L"\\");
+				}
+				strcatW(textW, finfoWptr->filename);
+				if ( testdisk ){
+					memset(&finfoW, WRITECHECK_BYTE, sizeof(finfoW));
+					result_file = GetFileInfoW(sourcename, 0, textW, SUSIE_SOURCE_DISK, &finfoW);
+					if ( result_file == SUSIEERROR_NOERROR ){
+						printout(L"d");
+						Compare_SUSIE_FINFOW_one(&finfoW, finfoWptr, count);
+						check_file++;
+					}
+				}
+				if ( testmem ){
+					memset(&finfoW, WRITECHECK_BYTE, sizeof(finfoW));
+					result_mem = GetFileInfoW((const WCHAR *)SourceImage, SourceSize, textW, SUSIE_SOURCE_MEM, &finfoW);
+					if ( result_mem == SUSIEERROR_NOERROR ){
+						printout(L"m");
+						Compare_SUSIE_FINFOW_one(&finfoW, finfoWptr, count);
+						check_mem++;
+					}else if ( result_file != SUSIEERROR_NOERROR ){
+						ShowComment(L" ● #%d(%s) 取得不可(%d)\r\n", count, textW, result_mem);
+					}
 				}
 			}
-		}
-		if ( CommentCount == OldCommentCount ){
-			printoutf(L" -> All match( file:%d mem:%d / all:%d)\r\n",
-					check_file, check_mem, count);
-		}
+			if ( CommentCount == OldCommentCount ){
+				printoutf(L" -> All match( file:%d mem:%d / all:%d)\r\n",
+						check_file, check_mem, count);
+			}
 			if ( testmem ){
-		if ( memcmp(SourceImage, CompareSourceImage, SourceAllocSize) != 0 ){
-			ShowComment(L" ● buf 破損\r\n");
-		}
-		}
+				if ( memcmp(SourceImage, CompareSourceImage, SourceAllocSize) != 0 ){
+					ShowComment(L" ● buf 破損\r\n");
+				}
+			}
 		}
 	}
 }
@@ -1306,19 +1302,21 @@ void TestGetFile(void)
 					strcat(textA, "\\");
 				}
 				strcat(textA, finfoAptr->filename);
-				result = GetFile(sourcenameA, finfoAptr->position, (LPSTR)&hImage, SUSIE_SOURCE_DISK | SUSIE_DEST_MEM, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
-				if ( result == SUSIEERROR_NOERROR ){
-					printout(L"Dm");
-					check++;
-					if ( hImage == NULL ){
-						ShowCommentA(" ● #%d(%s, disk->mem) 取得不可\r\n", count, textA);
-					}else{
-						if ( LocalSize(hImage) < finfoAptr->filesize ){
-							ShowCommentA(" ● #%d(%s, disk->mem) 取得メモリが filesize より小さい(%d < %d )\r\n", count, textA, LocalSize(hImage), finfoAptr->filesize);
+				if ( testdisk ){
+					result = GetFile(sourcenameA, finfoAptr->position, (LPSTR)&hImage, SUSIE_SOURCE_DISK | SUSIE_DEST_MEM, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
+					if ( result == SUSIEERROR_NOERROR ){
+						printout(L"Dm");
+						check++;
+						if ( hImage == NULL ){
+							ShowComment(L" ● #%d(%hs, disk->mem) 取得不可\r\n", count, textA);
 						}else{
-							check_file_mem++;
+							if ( LocalSize(hImage) < finfoAptr->filesize ){
+								ShowComment(L" ● #%d(%hs, disk->mem) 取得メモリが filesize より小さい(%d < %d)\r\n", count, textA, LocalSize(hImage), finfoAptr->filesize);
+							}else{
+								check_file_mem++;
+							}
+							LocalFree(hImage);
 						}
-						LocalFree(hImage);
 					}
 				}
 				if ( testmem ){
@@ -1327,10 +1325,10 @@ void TestGetFile(void)
 						printout(L"Mm");
 						check++;
 						if ( hImage == NULL ){
-							ShowCommentA(" ● #%d(%s, mem->mem) 取得不可\r\n", count, textA);
+							ShowComment(L" ● #%d(%hs, mem->mem) 取得不可\r\n", count, textA);
 						}else{
 							if ( LocalSize(hImage) < finfoAptr->filesize ){
-								ShowCommentA(" ● #%d(%s, mem->mem) 取得メモリが filesize より小さい(%d < %d )\r\n", count, textA, LocalSize(hImage), finfoAptr->filesize);
+								ShowComment(L" ● #%d(%hs, mem->mem) 取得メモリが filesize より小さい(%d < %d)\r\n", count, textA, LocalSize(hImage), finfoAptr->filesize);
 							}else{
 								check_mem_mem++;
 							}
@@ -1345,25 +1343,27 @@ void TestGetFile(void)
 				strcat(destfile, finfoAptr->filename);
 				DeleteFileA(destfile);
 
-				result = GetFile(sourcenameA, finfoAptr->position, dest, SUSIE_SOURCE_DISK | SUSIE_DEST_DISK, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
-				if ( result == SUSIEERROR_NOERROR ){
-					HANDLE hFile;
-					DWORD sizeL, sizeH;
+				if ( testdisk ){
+					result = GetFile(sourcenameA, finfoAptr->position, dest, SUSIE_SOURCE_DISK | SUSIE_DEST_DISK, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
+					if ( result == SUSIEERROR_NOERROR ){
+						HANDLE hFile;
+						DWORD sizeL, sizeH;
 
-					printout(L"Dd");
-					check++;
-					hFile = CreateFileA(destfile, GENERIC_READ,
-							FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
-							OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-					if ( hFile == INVALID_HANDLE_VALUE ){
-						ShowCommentA(" ● #%d(%s, file->file) 取得不可\r\n", count, destfile);
-					}else{
-						sizeL = GetFileSize(hFile, &sizeH);
-						CloseHandle(hFile);
-						if ( sizeL != finfoAptr->filesize ){
-							ShowCommentA(" ● #%d(%s, file->file) ファイルサイズが filesize と不一致(%d != %d )\r\n", count, textA, sizeL, finfoAptr->filesize);
+						printout(L"Dd");
+						check++;
+						hFile = CreateFileA(destfile, GENERIC_READ,
+								FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
+								OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+						if ( hFile == INVALID_HANDLE_VALUE ){
+							ShowComment(L" ● #%d(%hs, file->file) 取得不可\r\n", count, destfile);
 						}else{
-							check_file_file++;
+							sizeL = GetFileSize(hFile, &sizeH);
+							CloseHandle(hFile);
+							if ( sizeL != finfoAptr->filesize ){
+								ShowComment(L" ● #%d(%hs, file->file) ファイルサイズが filesize と不一致(%d != %d)\r\n", count, textA, sizeL, finfoAptr->filesize);
+							}else{
+								check_file_file++;
+							}
 						}
 					}
 				}
@@ -1380,12 +1380,12 @@ void TestGetFile(void)
 								FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
 								OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 						if ( hFile == INVALID_HANDLE_VALUE ){
-							ShowCommentA(" ● #%d(%s, mem->file) 取得不可\r\n", count, destfile);
+							ShowComment(L" ● #%d(%hs, mem->file) 取得不可\r\n", count, destfile);
 						}else{
 							sizeL = GetFileSize(hFile, &sizeH);
 							CloseHandle(hFile);
 							if ( sizeL != finfoAptr->filesize ){
-								ShowCommentA(" ● #%d(%s, mem->file) ファイルサイズが filesize と不一致(%d != %d )\r\n", count, textA, sizeL, finfoAptr->filesize);
+								ShowComment(L" ● #%d(%hs, mem->file) ファイルサイズが filesize と不一致(%d != %d )\r\n", count, textA, sizeL, finfoAptr->filesize);
 							}else{
 								check_file_file++;
 							}
@@ -1394,7 +1394,7 @@ void TestGetFile(void)
 				}
 
 				if ( check == 0 ){
-					printoutfA(" ● #%d(%s) 取得不可\r\n", count, textA);
+					printoutf(L" ● #%d(%hs) 取得不可\r\n", count, textA);
 				}
 			}
 			if ( CommentCount == OldCommentCount ){
@@ -1411,7 +1411,7 @@ void TestGetFile(void)
 		printout(L" ● GetFile がない\r\n");
 	}
 
-	if ( GetFileW != NULL ){
+	if ( UseUNICODE && (GetFileW != NULL) ){
 		int result;
 		int check_file_mem = 0, check_file_file = 0;
 		int check_mem_file = 0, check_mem_mem = 0;
@@ -1434,22 +1434,23 @@ void TestGetFile(void)
 					strcatW(textW, L"\\");
 				}
 				strcatW(textW, finfoWptr->filename);
-				result = GetFileW(sourcename, finfoWptr->position, (LPWSTR)&hImage, SUSIE_SOURCE_DISK | SUSIE_DEST_MEM, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
-				if ( result == SUSIEERROR_NOERROR ){
-					printout(L"Dm");
-					check++;
-					if ( hImage == NULL ){
-						ShowComment(L" ● #%d(%s, disk->mem) 取得不可\r\n", count, textW);
-					}else{
-						if ( LocalSize(hImage) < finfoWptr->filesize ){
-							ShowComment(L" ● #%d(%s, disk->mem) 取得メモリが filesize より小さい(%d < %d )\r\n", count, textW, LocalSize(hImage), finfoWptr->filesize);
+				if ( testdisk ){
+					result = GetFileW(sourcename, finfoWptr->position, (LPWSTR)&hImage, SUSIE_SOURCE_DISK | SUSIE_DEST_MEM, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
+					if ( result == SUSIEERROR_NOERROR ){
+						printout(L"Dm");
+						check++;
+						if ( hImage == NULL ){
+							ShowComment(L" ● #%d(%s, disk->mem) 取得不可\r\n", count, textW);
 						}else{
-							check_file_mem++;
+							if ( LocalSize(hImage) < finfoWptr->filesize ){
+								ShowComment(L" ● #%d(%s, disk->mem) 取得メモリが filesize より小さい(%d < %d)\r\n", count, textW, LocalSize(hImage), finfoWptr->filesize);
+							}else{
+								check_file_mem++;
+							}
+							LocalFree(hImage);
 						}
-						LocalFree(hImage);
 					}
 				}
-
 				if ( testmem ){
 					result = GetFileW((WCHAR *)SourceImage, SourceSize, (LPWSTR)&hImage, SUSIE_SOURCE_MEM | SUSIE_DEST_MEM, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
 					if ( result == SUSIEERROR_NOERROR ){
@@ -1459,7 +1460,7 @@ void TestGetFile(void)
 							ShowComment(L" ● #%d(%s, mem->mem) 取得不可\r\n", count, textW);
 						}else{
 							if ( LocalSize(hImage) < finfoWptr->filesize ){
-								ShowComment(L" ● #%d(%s, mem->mem) 取得メモリが filesize より小さい(%d < %d )\r\n", count, textW, LocalSize(hImage), finfoWptr->filesize);
+								ShowComment(L" ● #%d(%s, mem->mem) 取得メモリが filesize より小さい(%d < %d)\r\n", count, textW, LocalSize(hImage), finfoWptr->filesize);
 							}else{
 								check_mem_mem++;
 							}
@@ -1474,25 +1475,27 @@ void TestGetFile(void)
 				strcatW(destfile, finfoWptr->filename);
 				DeleteFileW(destfile);
 
-				result = GetFileW(sourcename, finfoWptr->position, dest, SUSIE_SOURCE_DISK | SUSIE_DEST_DISK, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
-				if ( result == SUSIEERROR_NOERROR ){
-					HANDLE hFile;
-					DWORD sizeL, sizeH;
+				if ( testdisk ){
+					result = GetFileW(sourcename, finfoWptr->position, dest, SUSIE_SOURCE_DISK | SUSIE_DEST_DISK, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
+					if ( result == SUSIEERROR_NOERROR ){
+						HANDLE hFile;
+						DWORD sizeL, sizeH;
 
-					printout(L"Dd");
-					check++;
-					hFile = CreateFileW(destfile, GENERIC_READ,
-							FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
-							OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-					if ( hFile == INVALID_HANDLE_VALUE ){
-						ShowComment(L" ● #%d(%s, file->file) 取得不可\r\n", count, destfile);
-					}else{
-						sizeL = GetFileSize(hFile, &sizeH);
-						CloseHandle(hFile);
-						if ( sizeL != finfoWptr->filesize ){
-							ShowComment(L" ● #%d(%s, file->file) ファイルサイズが filesize と不一致(%d != %d )\r\n", count, textW, sizeL, finfoWptr->filesize);
+						printout(L"Dd");
+						check++;
+						hFile = CreateFileW(destfile, GENERIC_READ,
+								FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
+								OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+						if ( hFile == INVALID_HANDLE_VALUE ){
+							ShowComment(L" ● #%d(%s, file->file) 取得不可\r\n", count, destfile);
 						}else{
-							check_file_file++;
+							sizeL = GetFileSize(hFile, &sizeH);
+							CloseHandle(hFile);
+							if ( sizeL != finfoWptr->filesize ){
+								ShowComment(L" ● #%d(%s, file->file) ファイルサイズが filesize と不一致(%d != %d)\r\n", count, textW, sizeL, finfoWptr->filesize);
+							}else{
+								check_file_file++;
+							}
 						}
 					}
 				}
@@ -1513,7 +1516,7 @@ void TestGetFile(void)
 							sizeL = GetFileSize(hFile, &sizeH);
 							CloseHandle(hFile);
 							if ( sizeL != finfoWptr->filesize ){
-								ShowComment(L" ● #%d(%s, mem->file) ファイルサイズが filesize と不一致(%d != %d )\r\n", count, textW, sizeL, finfoWptr->filesize);
+								ShowComment(L" ● #%d(%s, mem->file) ファイルサイズが filesize と不一致(%d != %d)\r\n", count, textW, sizeL, finfoWptr->filesize);
 							}else{
 								check_file_file++;
 							}
@@ -1615,7 +1618,7 @@ void TestCreatePicture(void)
 			result = CreatePicture(tempnameA, SUSIE_DEST_DISK | SUSIE_DEST_REJECT_UNKNOWN_TYPE, &HBInfo, &HBm, NULL, NULL, 0);
 			PluginResult(result);
 		}
-		if ( CreatePictureW != NULL ){
+		if ( UseUNICODE && (CreatePictureW != NULL) ){
 			printout(L" CreatePictureW");
 			wsprintfW(tempnameW, L"%s\\CreatePictureW 1023 x 511 24bit%s", temppathW, extW);
 			result = CreatePictureW(tempnameW, SUSIE_DEST_DISK | SUSIE_DEST_REJECT_UNKNOWN_TYPE, &HBInfo, &HBm, NULL, NULL, 0);

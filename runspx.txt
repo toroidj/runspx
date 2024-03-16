@@ -1,5 +1,5 @@
  ------------------------------------------------------------------------------
-	runspi / runsph / runspha	Version 0.3 Copyright (c)2024 TORO
+	runspi / runsph / runspha	Version 1.0 Copyright (c)2024 TORO
  ------------------------------------------------------------------------------
 
 	Susie Plug-in を使って画像の取得、書庫展開をしたり、Susie Plug-inの
@@ -106,13 +106,14 @@
 	-bp Pluginパス	CreatePicture を使う Susie Plug-in を指定します。
 	-r		GetPreview を GetPicture の代わりに使用します。
 	-t		Plug-in のテストを行います。
-	-tz		Plug-in のテストを行います。ファイズサイズが0の
+	-tz		Plug-in のテストを行います。ファイズサイズが 0 の
 			テストも行います。
 	-p		異常終了したとき、スタックトレースを行いません。
 	-e		GetFile による展開を行います。
 	-j		GetFile による展開時、サブディレクトリを無視します。
 	-srcdisk	入力ソースをファイルにします。
 	-srcmem		入力ソースをメモリにします。
+	-ansi		UNICODE 版API を使用しないでANSI 版API のみ使用します。
 
 
 ●64bit版 Susie Plug-in の仕様について
@@ -224,21 +225,35 @@ typedef int (__stdcall *GETFILEINFOW)(LPCWSTR buf, LONG_PTR len, LPCWSTR filenam
 	・このソフトウェアはフリーソフトウェアです。著作権は「TORO」、
 	  「高橋 良和」にあります。
 
-	・このソフトウェアを使用した事による利益・損害等は、こちらでは
-	  一切責任を負いません。
-
-	・転載は自由に行えます。
-	  本ソフトウェアが主となる営利目的での配布・使用はこちらに連絡下さい。
-
 	・runspi, runsph は、Visual Studio 2008、
 	  runspha は、Visual Studio 2019 を用いて構築しています。
 
-	・ソースを添付しています。個人で使用する範囲であれば自由に改変す
-	  ることができます。尚、プロジェクトファイルを添付していますが、
-	  配布ファイルの構築には使用しておらず、makefileを使用しています。
 
+●License
+runspi / runsph / runspha は、MITライセンスに基づいて公開しています。
+runspi / runsph / runspha is released under the MIT License.
 
-●連絡先／一次配布先						TORO／高橋 良和
+Copyright (c) 2024 TORO
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the “Software”),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+●著作権者／連絡先／一次配布先					TORO／高橋 良和
 
 E-mail	toroid.jp@gmail.com
 WWW	http://toro.d.dooo.jp/

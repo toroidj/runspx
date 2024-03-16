@@ -62,7 +62,7 @@ int init(void)
 		}
 		if ( strcmpW(param, L"-tz") == 0 ){
 			RunMode = MODE_TEST_ZEROSIZE;
-			testmem = 10;
+			testmem = testmem_zerosize;
 			continue;
 		}
 		if ( strcmpW(param, L"-p") == 0 ){
@@ -89,6 +89,11 @@ int init(void)
 		if ( strcmpW(param, L"-srcdisk") == 0 ){
 			testdisk = 1;
 			if ( testmem < 0 ) testmem = 0;
+			continue;
+		}
+
+		if ( strcmpW(param, L"-ansi") == 0 ){
+			UseUNICODE = FALSE;
 			continue;
 		}
 

@@ -37,6 +37,7 @@ OSVERSIONINFO OSver;
 BOOL EnableESC = FALSE;
 BOOL UseCreatePicture = FALSE;
 BOOL UseSubdirectory = TRUE;
+BOOL UseUNICODE = TRUE;
 
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
  #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 4 // Win10 RS2 à»ç~
@@ -233,35 +234,6 @@ void printoutfColor(DWORD color, const WCHAR *message, ...)
 	va_start(argptr, message);
 	wvsprintfW(buf, message, argptr);
 	printout(buf);
-	ResetColor();
-}
-
-void USEFASTCALL printoutA(const char *str)
-{
-	DWORD size;
-
-	WriteConsoleA(hStdout, str, (DWORD)strlen(str), &size, NULL);
-}
-
-void printoutfA(const char *message, ...)
-{
-	char buf[0x800];
-	va_list argptr;
-
-	va_start(argptr, message);
-	wvsprintfA(buf, message, argptr);
-	printoutA(buf);
-}
-
-void printoutfColorA(DWORD color, const char *message, ...)
-{
-	char buf[0x800];
-	va_list argptr;
-
-	SetColor(color);
-	va_start(argptr, message);
-	wvsprintfA(buf, message, argptr);
-	printoutA(buf);
 	ResetColor();
 }
 
