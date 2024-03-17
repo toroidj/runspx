@@ -1,5 +1,5 @@
  ------------------------------------------------------------------------------
-	runspi / runsph / runspha	Version 1.0 Copyright (c)2024 TORO
+	runspi / runsph / runspha	Version 1.1 Copyright (c)2024 TORO
  ------------------------------------------------------------------------------
 
 	Susie Plug-in を使って画像の取得、書庫展開をしたり、Susie Plug-inの
@@ -66,7 +66,7 @@
 	指定された画像を Plug-in の GetArchiveInfo で読み込み、書庫内の
 	全ファイルを展開先に保存します。
 
-	runspx.exe (Plug-inのパス) (読み込む書庫のパス) [-j] -e [展開先]
+	runspx.exe (Plug-inのパス) (読み込む書庫のパス) [-j] -e (展開先)
 	-j はディレクトリ指定を無視します
 
 
@@ -75,10 +75,18 @@
 	指定された画像を Plug-in の GetArchiveInfo で読み込み、書庫内の
 	指定ファイルを展開先に保存します。
 
-	runspx.exe (Plug-inのパス) (読み込む書庫のパス) (展開ファイル名) -e [展開先]
+	runspx.exe (Plug-inのパス) (読み込む書庫のパス) -e (展開先) (展開ファイル名)
 
 
-(7) Susie Plug-in のテスト
+(7) 画像のエンコード
+
+	指定された画像を指定した拡張子の形式にエンコードしてファイルに
+	保存します。
+
+	runspx.exe (Plug-inのパス) (読み込む画像のパス) -bc (展開先の画像のパス) [-bp (エンコードに使用する Plug-inのパス)]
+
+
+(8) Susie Plug-in のテスト
 
 	runspx.exe (Plug-inのパス) (読み込む画像・書庫のパス) -t [-p]
 	runspx.exe (Plug-inのパス) (読み込む画像・書庫のパス) -tz [-p]
@@ -252,6 +260,13 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+●履歴
+Version 1.1	2024/03/17
+・書庫の指定ファイル展開の説明の誤記修正と、展開が終わらないことがあるのを修正
+
+Version 1.0	2024/03/16
+・初版
 
 ●著作権者／連絡先／一次配布先					TORO／高橋 良和
 

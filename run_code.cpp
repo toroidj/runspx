@@ -295,7 +295,7 @@ void RunArchive(MODELIST RunMode)
 		strcpy(targetnameA, ".");
 	}
 
-	if ( UseUNICODE && (GetArchiveInfoW != NULL) ) for(;;){
+	if ( UseUNICODE && (GetArchiveInfoW != NULL) ){
 		hInfFile = INVALID_HANDLE_VALUE;
 		result = GetArchiveInfoW(sourcename, 0, SUSIE_SOURCE_DISK, &hInfFile);
 		if ( result != SUSIEERROR_NOERROR ){
@@ -316,7 +316,7 @@ void RunArchive(MODELIST RunMode)
 			itemlen = strlenW(archiveitem);
 			infocount = infosize / sizeof(SUSIE_FINFOW);
 			maxcount = (infosize + sizeof(SUSIE_FINFOW) - 1) / sizeof(SUSIE_FINFOW);
-			for ( ; count < maxcount ;){
+			for ( ; count < maxcount ; finfo++, count++ ){
 				if ( finfo->method[0] == '\0' ) break;
 
 				if ( archiveitem[0] != '\0' ){
@@ -358,6 +358,7 @@ void RunArchive(MODELIST RunMode)
 							strcatW(destpathW, (nameptr != NULL) ? nameptr : pathbuf);
 							FixTimestamp(destpathW, finfo->timestamp);
 						}else{
+							printout(finfo->filename);
 							PluginResult(result);
 						}
 						break;
@@ -372,8 +373,7 @@ void RunArchive(MODELIST RunMode)
 						}
 						break;
 				}
-				finfo++;
-				count++;
+				if ( itemlen != '\0' ) break;
 			}
 			LocalUnlock(hInfFile);
 			LocalFree(hInfFile);
@@ -448,6 +448,7 @@ void RunArchive(MODELIST RunMode)
 						AnsiToUnicode(destpathA, destpathW, MAX_PATH);
 						FixTimestamp(destpathW, finfo->timestamp);
 					}else{
+						printoutf(L"%hs", finfo->filename);
 						PluginResult(result);
 					}
 					break;
@@ -463,6 +464,7 @@ void RunArchive(MODELIST RunMode)
 					printoutf(L"%hs%hs\r\n", finfo->path,  finfo->filename);
 					break;
 			}
+			if ( itemlen != '\0' ) break;
 		}
 		LocalUnlock(hInfFile);
 		LocalFree(hInfFile);
