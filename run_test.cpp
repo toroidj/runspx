@@ -75,7 +75,6 @@ void PluginResult(int result)
 void LoadSourceImage(void)
 {
 	HANDLE hFile;
-	DWORD sizeL, sizeH, size;
 
 	if ( testmem == testmem_zerosize ){
 		SourceSize = 0;
@@ -97,16 +96,20 @@ void LoadSourceImage(void)
 			FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
 			OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 	if ( hFile != INVALID_HANDLE_VALUE ){
-		SourceSize = sizeL = GetFileSize(hFile, &sizeH);
-		SourceAllocSize = sizeL + 256;
+		LARGE_INTEGER filesize;
+		DWORD size;
+
+		GetFileSizeEx(hFile, &filesize);
+		SourceSize = filesize.u.LowPart;
+		SourceAllocSize = filesize.u.LowPart + 256;
 		if ( testmem < 0 ){
-			testmem = (sizeH == 0) && (sizeL <= MAX_TEST_ON_MEMORY);
+			testmem = filesize.QuadPart <= MAX_TEST_ON_MEMORY;
 		}
 		if ( testmem ){
 			SourceImage = (char *)malloc(SourceAllocSize);
 			CompareSourceImage = (char *)malloc(SourceAllocSize);
 			memset(SourceImage, WRITECHECK_BYTE, SourceAllocSize);
-			ReadFile(hFile, SourceImage, sizeL, &size, NULL);
+			ReadFile(hFile, SourceImage, filesize.u.LowPart, &size, NULL);
 			memcpy(CompareSourceImage, SourceImage, SourceAllocSize);
 		}else{
 			printout(L"＊ソースファイルが大きいためチェックできない\r\n");
@@ -587,7 +590,15 @@ void TestGetPluginInfo(void)
 			#define INFOBUFCHECKLEN 500
 			char bufA[INFOBUFLEN];
 			WCHAR bufW[INFOBUFLEN], cbuf[32], *memo;
-			int result, result_checklen;
+			int result, result_checklen, result_susielen;
+
+			if ( infono >= 2 ){
+				result_susielen = 255;
+			}else if ( infono == 1 ){
+				result_susielen = 128;
+			}else{
+				result_susielen = 8;
+			}
 
 			if ( unicode == FALSE ){
 				if ( infono >= 1 ){
@@ -605,21 +616,12 @@ void TestGetPluginInfo(void)
 
 				memset(bufA, WRITECHECK_BYTE, sizeof(bufA));
 				result = GetPluginInfo(infono, bufA, INFOBUFCHECKLEN);
-
 				if ( result == 0 ){
 					TestGetPluginInfo_noinfo(infono);
 					break;
 				}
-				if ( result > INFOBUFCHECKLEN ){
-					ShowComment(L" ● infono=%d: 戻り値(%d)が指定最大値(%d)超\r\n", infono, result, INFOBUFCHECKLEN);
-					result = INFOBUFCHECKLEN - 1;
-				}
 				bufA[INFOBUFLEN - 1] = '\0';
 				result_checklen = strlen(bufA);
-				if ( result_checklen > result ){
-					ShowComment(L" ● infono=%d: buf の末尾が \\0 でない\r\n", infono);
-					bufA[result] = '\0';
-				}
 				AnsiToUnicode(bufA, bufW, INFOBUFCHECKLEN);
 			}else{
 				if ( infono >= 1 ){
@@ -642,15 +644,19 @@ void TestGetPluginInfo(void)
 					TestGetPluginInfo_noinfo(infono);
 					break;
 				}
-				if ( result > INFOBUFCHECKLEN ){
-					ShowComment(L" ● infono=%d: 戻り値(%d)が指定最大値(%d)超\r\n", infono, result, INFOBUFCHECKLEN);
-					result = INFOBUFCHECKLEN - 1;
-				}
 				bufW[INFOBUFLEN - 1] = '\0';
 				result_checklen = strlenW(bufW);
-				if ( result_checklen > result ){
-					ShowComment(L" ● infono=%d: buf の末尾が \\0 でない\r\n", infono);
-				}
+			}
+
+			if ( result > INFOBUFCHECKLEN ){
+				ShowComment(L" ● infono=%d: 戻り値(%d)が指定最大値(%d)超\r\n", infono, result, INFOBUFCHECKLEN);
+				result = INFOBUFCHECKLEN - 1;
+			}
+			if ( result_checklen > result ){
+				ShowComment(L" ● infono=%d: buf の末尾が \\0 でない\r\n", infono);
+			}
+			if ( result_checklen >= result_susielen ){
+				ShowComment(L" ● infono=%d: Susie(%d)では扱えない長さ\r\n", infono, result_susielen);
 			}
 
 			memo = L"";
@@ -714,7 +720,10 @@ void TestIsSupported(void)
 
 	for (;; unicode = TRUE){
 		if ( unicode == FALSE ){ // ansi
-			if ( IsSupported == NULL ) continue;
+			if ( IsSupported == NULL ){
+				ShowComment(L" ● IsSupported が存在しない\r\n");
+				continue;
+			}
 
 			PrintAPIname("IsSupported(LPCSTR filename, void *dw)");
 			strcpy(bufA, "non-existence");
@@ -1320,7 +1329,7 @@ void TestGetFile(void)
 					}
 				}
 				if ( testmem ){
-					result = GetFile(SourceImage, SourceSize, (LPSTR)&hImage, SUSIE_SOURCE_MEM | SUSIE_DEST_MEM, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
+					result = GetFile(SourceImage + finfoAptr->position, SourceSize, (LPSTR)&hImage, SUSIE_SOURCE_MEM | SUSIE_DEST_MEM, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
 					if ( result == SUSIEERROR_NOERROR ){
 						printout(L"Mm");
 						check++;
@@ -1347,7 +1356,7 @@ void TestGetFile(void)
 					result = GetFile(sourcenameA, finfoAptr->position, dest, SUSIE_SOURCE_DISK | SUSIE_DEST_DISK, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
 					if ( result == SUSIEERROR_NOERROR ){
 						HANDLE hFile;
-						DWORD sizeL, sizeH;
+						LARGE_INTEGER filesize;
 
 						printout(L"Dd");
 						check++;
@@ -1357,10 +1366,10 @@ void TestGetFile(void)
 						if ( hFile == INVALID_HANDLE_VALUE ){
 							ShowComment(L" ● #%d(%hs, file->file) 取得不可\r\n", count, destfile);
 						}else{
-							sizeL = GetFileSize(hFile, &sizeH);
+							GetFileSizeEx(hFile, &filesize);
 							CloseHandle(hFile);
-							if ( sizeL != finfoAptr->filesize ){
-								ShowComment(L" ● #%d(%hs, file->file) ファイルサイズが filesize と不一致(%d != %d)\r\n", count, textA, sizeL, finfoAptr->filesize);
+							if ( filesize.QuadPart != finfoAptr->filesize ){
+								ShowComment(L" ● #%d(%hs, file->file) ファイルサイズが filesize と不一致(%d != %d)\r\n", count, textA, filesize.u.LowPart, finfoAptr->filesize);
 							}else{
 								check_file_file++;
 							}
@@ -1372,7 +1381,7 @@ void TestGetFile(void)
 					result = GetFile(SourceImage, SourceSize, dest, SUSIE_SOURCE_MEM | SUSIE_DEST_DISK, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
 					if ( result == SUSIEERROR_NOERROR ){
 						HANDLE hFile;
-						DWORD sizeL, sizeH;
+						LARGE_INTEGER filesize;
 
 						printout(L"Md");
 						check++;
@@ -1382,10 +1391,10 @@ void TestGetFile(void)
 						if ( hFile == INVALID_HANDLE_VALUE ){
 							ShowComment(L" ● #%d(%hs, mem->file) 取得不可\r\n", count, destfile);
 						}else{
-							sizeL = GetFileSize(hFile, &sizeH);
+							GetFileSizeEx(hFile, &filesize);
 							CloseHandle(hFile);
-							if ( sizeL != finfoAptr->filesize ){
-								ShowComment(L" ● #%d(%hs, mem->file) ファイルサイズが filesize と不一致(%d != %d )\r\n", count, textA, sizeL, finfoAptr->filesize);
+							if ( filesize.QuadPart != finfoAptr->filesize ){
+								ShowComment(L" ● #%d(%hs, mem->file) ファイルサイズが filesize と不一致(%d != %d )\r\n", count, textA, filesize.u.LowPart, finfoAptr->filesize);
 							}else{
 								check_file_file++;
 							}
@@ -1452,7 +1461,7 @@ void TestGetFile(void)
 					}
 				}
 				if ( testmem ){
-					result = GetFileW((WCHAR *)SourceImage, SourceSize, (LPWSTR)&hImage, SUSIE_SOURCE_MEM | SUSIE_DEST_MEM, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
+					result = GetFileW((WCHAR *)(char *)(SourceImage + finfoWptr->position), SourceSize, (LPWSTR)&hImage, SUSIE_SOURCE_MEM | SUSIE_DEST_MEM, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
 					if ( result == SUSIEERROR_NOERROR ){
 						printout(L"Mm");
 						check++;
@@ -1479,7 +1488,7 @@ void TestGetFile(void)
 					result = GetFileW(sourcename, finfoWptr->position, dest, SUSIE_SOURCE_DISK | SUSIE_DEST_DISK, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
 					if ( result == SUSIEERROR_NOERROR ){
 						HANDLE hFile;
-						DWORD sizeL, sizeH;
+						LARGE_INTEGER filesize;
 
 						printout(L"Dd");
 						check++;
@@ -1489,10 +1498,10 @@ void TestGetFile(void)
 						if ( hFile == INVALID_HANDLE_VALUE ){
 							ShowComment(L" ● #%d(%s, file->file) 取得不可\r\n", count, destfile);
 						}else{
-							sizeL = GetFileSize(hFile, &sizeH);
+							GetFileSizeEx(hFile, &filesize);
 							CloseHandle(hFile);
-							if ( sizeL != finfoWptr->filesize ){
-								ShowComment(L" ● #%d(%s, file->file) ファイルサイズが filesize と不一致(%d != %d)\r\n", count, textW, sizeL, finfoWptr->filesize);
+							if ( filesize.QuadPart != finfoWptr->filesize ){
+								ShowComment(L" ● #%d(%s, file->file) ファイルサイズが filesize と不一致(%d != %d)\r\n", count, textW, filesize.u.LowPart, finfoWptr->filesize);
 							}else{
 								check_file_file++;
 							}
@@ -1503,7 +1512,7 @@ void TestGetFile(void)
 					result = GetFileW((WCHAR *)SourceImage, SourceSize, dest, SUSIE_SOURCE_MEM | SUSIE_DEST_DISK, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)&sourcenameA);
 					if ( result == SUSIEERROR_NOERROR ){
 						HANDLE hFile;
-						DWORD sizeL, sizeH;
+						LARGE_INTEGER filesize;
 
 						printout(L"Md");
 						check++;
@@ -1512,11 +1521,11 @@ void TestGetFile(void)
 								OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 						if ( hFile == INVALID_HANDLE_VALUE ){
 							ShowComment(L" ● #%d(%s, mem->file) 取得不可\r\n", count, destfile);
-					}else{
-							sizeL = GetFileSize(hFile, &sizeH);
+						}else{
+							GetFileSizeEx(hFile, &filesize);
 							CloseHandle(hFile);
-							if ( sizeL != finfoWptr->filesize ){
-								ShowComment(L" ● #%d(%s, mem->file) ファイルサイズが filesize と不一致(%d != %d)\r\n", count, textW, sizeL, finfoWptr->filesize);
+							if ( filesize.QuadPart != finfoWptr->filesize ){
+								ShowComment(L" ● #%d(%s, mem->file) ファイルサイズが filesize と不一致(%d != %d)\r\n", count, textW, filesize.u.LowPart, finfoWptr->filesize);
 							}else{
 								check_file_file++;
 							}

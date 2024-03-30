@@ -125,15 +125,16 @@ extern const WCHAR *GetTimeStrings(WCHAR *dest, susie_time_t timestamp);
 typedef struct {
 	BYTE *bits; // ビットマップのイメージ
 	HLOCAL info, bm;
-	HPALETTE hPalette;
+//	HPALETTE hPalette;
 	SIZE size; // 画像の大きさ(DIBの値はトップダウンもあるので使わないこと)
 	BITMAPINFOHEADER *DIB;
+/*
 	DWORD PaletteOffset;
-
 	struct {		// 減色パレット
 		BITMAPINFOHEADER dib2;
 		RGBQUAD rgb2[256];
 	} nb;
+*/
 } HTBMP;
 
 #ifdef __cplusplus

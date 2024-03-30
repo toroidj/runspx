@@ -217,7 +217,7 @@ void USEFASTCALL printout(const WCHAR *str)
 
 void printoutf(const WCHAR *message, ...)
 {
-	WCHAR buf[0x800];
+	WCHAR buf[0x500];
 	va_list argptr;
 
 	va_start(argptr, message);
@@ -227,7 +227,7 @@ void printoutf(const WCHAR *message, ...)
 
 void printoutfColor(DWORD color, const WCHAR *message, ...)
 {
-	WCHAR buf[0x800];
+	WCHAR buf[0x500];
 	va_list argptr;
 
 	SetColor(color);
@@ -282,8 +282,17 @@ const WCHAR *GetTimeStrings(WCHAR *dest, susie_time_t timestamp)
 	return dest;
 }
 
-#define PrintAPIload(name) printout( (name == NULL) ? L" x" : L" A");printout( (name##W == NULL) ? L" x " UNICODESTR(#name) L"\r\n" : L" W " UNICODESTR(#name) L"\r\n");
-#define PrintAPIload1(name) printout( (name == NULL) ? L" x   " UNICODESTR(#name) L"\r\n" : L" O   " UNICODESTR(#name) L"\r\n");
+typedef void (__stdcall * SUSIEAPI)(void);
+void PrintAPIloadMain(SUSIEAPI funcA, SUSIEAPI funcW, const WCHAR *funcname)
+{
+	printoutf(L" %c %c %s\t\n",
+		(funcA == NULL) ? 'x' : 'A',
+		(funcW == NULL) ? 'x' : 'W',
+		funcname);
+}
+
+#define PrintAPIload(name) PrintAPIloadMain((SUSIEAPI)name, (SUSIEAPI)name##W, UNICODESTR(#name))
+#define PrintAPIload1(name) printoutf(L" %c   " UNICODESTR(#name) L"\r\n", (name == NULL) ? 'x' : 'O');
 
 void ShowAPIlist(void)
 {
@@ -324,87 +333,6 @@ HANDLE OpenFileHeader(char *header)
 
 const WCHAR PixSeqence[] = L"\x1b[38;2;%d;%d;%dm\x1b[48;2;%d;%d;%dm\u2584";
 
-/* DIBのヘッダからパレットを作成する */
-HPALETTE DIBtoPalette(HTBMP *hTbmp, int maxY)
-{
-	struct {
-		WORD palVersion;
-		WORD palNumEntries;
-		PALETTEENTRY palPalEntry[256];
-	} lPal;
-	PALETTEENTRY *ppal;
-	RGBQUAD *rgb;
-	int r, g, b;
-	DWORD ClrUsed;
-	BYTE *src, *dst;
-	BITMAPINFOHEADER *dib;
-
-	dib = hTbmp->DIB;
-	ClrUsed = dib->biClrUsed ? dib->biClrUsed : (DWORD)(1 << dib->biBitCount);
-	lPal.palNumEntries = (WORD)ClrUsed;
-	lPal.palVersion = 0x300;
-	ppal = lPal.palPalEntry;
-	if ( ClrUsed > 256 ){	//フルカラー画像は全体に散らばったパレットを作成
-		HDC hDC;
-		int VideoBits;
-
-		hDC = GetDC(NULL);
-		VideoBits = GetDeviceCaps(hDC, BITSPIXEL);
-		ReleaseDC(NULL, hDC);
-		if ( VideoBits > 8 ) return NULL; // 画面が256超なのでそのまま表示可能
-
-		rgb = hTbmp->nb.rgb2;
-		lPal.palNumEntries = 6 * 6 * 6;
-		for( b = 0 ; b <= 255 ; b += 51 ){
-			for(g = 0 ; g <= 255 ; g += 51){
-				for(r = 0 ; r <= 255 ; r += 51, ppal++){
-					rgb->rgbRed = ppal->peRed     = (BYTE)r;
-					rgb->rgbGreen = ppal->peGreen = (BYTE)g;
-					rgb->rgbBlue = ppal->peBlue   = (BYTE)b;
-					rgb->rgbReserved = ppal->peFlags = 0;
-					rgb++;
-				}
-			}
-		}
-
-		if ( dib->biBitCount == 24 ){
-			int x, y;
-
-			src = dst = hTbmp->bits;
-			dib->biSizeImage = hTbmp->size.cx * maxY;
-			for ( y = 0; y < maxY ; y++ ){
-				for ( x = 0; x < dib->biWidth ; x++ ){
-					r = ((*(src++) + 25) / 51);	// red
-					g = ((*(src++) + 25) / 51);	// green
-												// blue
-					*dst++ = (BYTE)(r * 36 + g * 6 + ((*(src++) +25) / 51));
-				}
-				src += (4 - ALIGNMENT_BITS(src)) & 3;
-				dst += (4 - ALIGNMENT_BITS(dst)) & 3;
-			}
-			dib->biBitCount = 8;
-			dib->biCompression = BI_RGB;
-			dib->biClrUsed = 6*6*6;
-			dib->biClrImportant = 0;
-			hTbmp->nb.dib2 = *dib;
-			hTbmp->DIB = &hTbmp->nb.dib2;
-		}
-	}else{
-		DWORD ci;
-
-		rgb = (LPRGBQUAD)((BYTE *)hTbmp->DIB + hTbmp->PaletteOffset);
-		if ( IsBadReadPtr(rgb, ClrUsed * sizeof(RGBQUAD)) ) return NULL;
-
-		for ( ci = 0; ci < ClrUsed; ci++, rgb++, ppal++ ){
-			ppal->peRed = rgb->rgbRed;
-			ppal->peGreen = rgb->rgbGreen;
-			ppal->peBlue = rgb->rgbBlue;
-			ppal->peFlags = 0;
-		}
-	}
-	return CreatePalette((LOGPALETTE *)&lPal);
-}
-
 BOOL InitBMP(HTBMP *hTbmp)
 {
 	int palette;
@@ -414,7 +342,7 @@ BOOL InitBMP(HTBMP *hTbmp)
 	if ( (hTbmp->DIB = (BITMAPINFOHEADER *)LocalLock(hTbmp->info)) == NULL ) goto error;
 	if ( (hTbmp->bits = (BYTE *)LocalLock(hTbmp->bm)) == NULL ) goto error;
 
-	hTbmp->hPalette = NULL;
+//	hTbmp->hPalette = NULL;
 
 	offset = hTbmp->DIB->biSize;
 	color = hTbmp->DIB->biBitCount;
@@ -422,7 +350,7 @@ BOOL InitBMP(HTBMP *hTbmp)
 	if ( (offset < (sizeof(BITMAPINFOHEADER) + 12) ) && (hTbmp->DIB->biCompression == BI_BITFIELDS) ){
 		offset += 12;	// 16/32bit のときはビット割り当てがある
 	}
-	hTbmp->PaletteOffset = offset;
+//	hTbmp->PaletteOffset = offset;
 #pragma warning(suppress: 6297) // color は 8以下で、DWORD を越えることがない
 	offset += palette ? palette * (DWORD)sizeof(RGBQUAD) :
 			((color <= 8) ? (DWORD)(1 << color) * (DWORD)sizeof(RGBQUAD) : 0);
@@ -438,11 +366,12 @@ BOOL InitBMP(HTBMP *hTbmp)
 	if ( hTbmp->size.cy < 0 ) hTbmp->size.cy = -hTbmp->size.cy; // トップダウン
 	if ( palette && (color <= 8) ) hTbmp->DIB->biClrUsed = 1 << color;
 
-	hTbmp->hPalette = DIBtoPalette(hTbmp, hTbmp->size.cy);
+	// ShowImageToConsole では hPalette を使わないので省略
+//	hTbmp->hPalette = DIBtoPalette(hTbmp, hTbmp->size.cy);
 	return TRUE;
 error:
 	hTbmp->DIB = NULL;
-	hTbmp->hPalette = NULL;
+//	hTbmp->hPalette = NULL;
 	return FALSE;
 }
 
@@ -513,11 +442,9 @@ BOOL ShowImageToConsole(HLOCAL HBInfo, HLOCAL HBm)
 
 	hDestBMP = CreateDIBSection(NULL, &bmpinfo, DIB_RGB_COLORS, &lpBits, NULL, 0);
 
-	// 元画像を複写
 	hOldDstBMP = SelectObject(hDstDC, hDestBMP);
 	SetStretchBltMode(hDstDC, HALFTONE);
 
-	// 追加画像を複写
 	StretchDIBits(hDstDC,
 			0, 0, bmpinfo.bmiHeader.biWidth, bmpinfo.bmiHeader.biHeight,
 			0, 0, hTbmp.size.cx, hTbmp.size.cy,

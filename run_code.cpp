@@ -12,6 +12,7 @@ BOOL CheckHeader(void)
 	HANDLE hFile;
 	int result;
 
+	if ( IsSupported == NULL ) return FALSE;
 	hFile = OpenFileHeader(header);
 	if ( hFile == INVALID_HANDLE_VALUE ) return FALSE;
 
@@ -38,7 +39,7 @@ void SaveDibData(LPCWSTR lpBmpFn, HLOCAL HBInfo, HLOCAL HBm)
 	lpbmh = LocalLock(HBInfo);
 	lpdib = LocalLock(HBm);
 	if ( lpbmh == NULL || lpdib == NULL ||
-		*(size_t *)lpbmh < sizeof(BITMAPCOREHEADER) || *(size_t *)lpbmh > 256 ) {
+		*(DWORD *)lpbmh < sizeof(BITMAPCOREHEADER) || *(DWORD *)lpbmh > 256 ) {
 		printout(L"The plug-in has returned an invalid memory block.\n");
 		LocalUnlock(HBInfo);
 		LocalUnlock(HBm);
@@ -53,7 +54,7 @@ void SaveDibData(LPCWSTR lpBmpFn, HLOCAL HBInfo, HLOCAL HBm)
 		return;
 	}
 
-	if ( (bmh_bytes = *(size_t *)lpbmh) < sizeof(BITMAPINFOHEADER) ){ /* OS/2 format */
+	if ( (bmh_bytes = *(DWORD *)lpbmh) < sizeof(BITMAPINFOHEADER) ){ /* OS/2 format */
 		LPBITMAPCOREHEADER lpbmch = (LPBITMAPCOREHEADER)lpbmh;
 		if ( lpbmch->bcBitCount <= 8 ){
 			bmh_bytes += sizeof(RGBTRIPLE) << lpbmch->bcBitCount;

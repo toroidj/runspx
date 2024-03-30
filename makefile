@@ -1,6 +1,6 @@
 name = run
 
-UseDebug = 1	# 1 ‚È‚ç debug Žw’è
+UseDebug = 0	# 1 ‚È‚ç debug Žw’è
 !ifndef UseBCC
 UseBCC = 1	# 1 ‚È‚ç BCC32 , 0 ‚È‚ç CL
 !endif

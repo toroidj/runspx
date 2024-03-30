@@ -1,5 +1,5 @@
  ------------------------------------------------------------------------------
-	runspi / runsph / runspha	Version 1.1 Copyright (c)2024 TORO
+	runspi / runsph / runspha	Version 1.2 Copyright (c)2024 TORO
  ------------------------------------------------------------------------------
 
 	Susie Plug-in を使って画像の取得、書庫展開をしたり、Susie Plug-inの
@@ -130,6 +130,7 @@
 	また、拡張子は .sph としています。詳細は次の場所で公開しています。
 
 	http://toro.d.dooo.jp/dlsphapi.html
+	https://toroidj.github.io/dlsphapi.html
 
 
 //-------------------------------------- DLL 定数
@@ -262,6 +263,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ●履歴
+Version 1.2	2024/03/30
+・GetFileのテストで、ソースがメモリの時の動作がおかしいのを修正
+
 Version 1.1	2024/03/17
 ・書庫の指定ファイル展開の説明の誤記修正と、展開が終わらないことがあるのを修正
 
