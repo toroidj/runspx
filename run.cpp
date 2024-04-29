@@ -166,7 +166,6 @@ int __cdecl main(int, char *)
 					if ( sourcename[0] == '\0' ){
 						ShowAPIlist();
 					}else{
-						if ( CheckHeader() == FALSE ) break;
 						if ( GetPicture != NULL ){
 							RunShowPicture(RunMode);
 						}else if ( GetArchiveInfo != NULL ){

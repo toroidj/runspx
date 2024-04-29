@@ -121,7 +121,7 @@ int DoGetPicture(MODELIST RunMode, HLOCAL &HBInfo, HLOCAL &HBm)
 	}else{
 		result = RunApiA(sourcenameA, 0, SUSIE_SOURCE_DISK, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
 	}
-	if ( result != 0 ){
+	if ( result != SUSIEERROR_NOERROR ){
 		LoadSourceImage();
 		if ( testmem != 0 ){
 			if ( UseUNICODE && (RunApiW != NULL) ){
@@ -130,7 +130,7 @@ int DoGetPicture(MODELIST RunMode, HLOCAL &HBInfo, HLOCAL &HBm)
 				result = RunApiA(SourceImage, SourceSize, SUSIE_SOURCE_MEM, &HBInfo, &HBm, (FARPROC)SusieProgressCallbackCheck, (LONG_PTR)sourcenameA);
 			}
 		}
-		if ( result != 0 ){
+		if ( result != SUSIEERROR_NOERROR ){
 			printout( (RunMode == MODE_GETPREVIEW) ? L"GetPreview" : L"GetPicture");
 			PluginResult(result);
 		}
@@ -290,6 +290,8 @@ void RunArchive(MODELIST RunMode)
 	int result;
 	HLOCAL hInfFile;
 	WCHAR destpathW[0x1000];
+
+	if ( CheckHeader() == FALSE ) return;
 
 	if ( targetname[0] == '\0' ){
 		strcpyW(targetname, L".");
