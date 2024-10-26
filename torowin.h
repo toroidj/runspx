@@ -92,15 +92,15 @@
 #define LCID_ENGLISH	0x409
 #define LCID_JAPANESE	0x411
 #define CP__US		437 // IBM437 常に使用可能。※WinNT4 JP では列挙できない
-#define CP__SJIS	932 // shift_jis 2000未満, Win9xではJP版のみ使用可能
+#define CP__SJIS	932 // shift_jis 2000未満, Win9xではJP版のみ使用可
 #define CP__UTF16L	1200 // utf-16 little endian .net のみ
 #define CP__UTF16B	1201 // unicodeFFFE big endian .net のみ
-#define CP__LATIN1	1252 // iso-8859-1 常に使用可能
+#define CP__LATIN1	1252 // iso-8859-1 常に使用可
 #define CP__JIS		50220 // ISO-2022 JIS X 0202-1984 .net のみ
 #define CP__JISSI	50222 // iso-2022-jp JIS X 0202-1984 (SI/SO有り) .net のみ
 #define CP__EUCJP	51932 // euc-jp .net のみ
 #define CP__NOPREC	50220 // CP__JIS, 50221, CP__JISSI, 50225, 50227, 50229 ,570002-11, UTF-7, 42 は MB_PRECOMPOSED が使用できない
-// CP_UTF7/CP_UTF8 は NT4 SP?/98SE? から使用可能
+// CP_UTF7/CP_UTF8 は NT4 SP?/98SE? から使用可
 #define INVALID_VALUE(type) ((type)(LONG_PTR)-1)
 
 #define T_DEFAULTFONTSIZE -13 // 約10point

@@ -733,11 +733,11 @@ void TestIsSupported(void)
 			PrintAPIname("IsSupportedW(LPCSTR filename, void *dw)");
 			strcpyW(bufW, L"non-existence");
 		}
-		printout(L" filename is memory(dummy data):");
+		printout(L" dw is memory(dummy data):");
 		result = PrintSupport(IsSupportedT(unicode, bufA, bufW, dummy_header));
 		if ( result ) ShowComment(L" ● 存在しないファイルでも対応扱い\r\n");
 
-		printoutf(L" filename is file handle(bad handle):");
+		printoutf(L" dw is file handle(bad handle):");
 		result = PrintSupport(IsSupportedT(unicode, bufA, bufW, (void *)WRITECHECK_BYTE));
 		if ( result ) ShowComment(L" ● 存在しないハンドルでも対応扱い\r\n");
 
@@ -747,7 +747,7 @@ void TestIsSupported(void)
 			strcpyW(bufW, sourcename);
 		}
 
-		printout(L" filename is memory:     ");
+		printout(L" dw is memory:     ");
 		PrintSupport(IsSupportedT(unicode, bufA, bufW, header));
 
 		if ( (!unicode ? strcmp(bufA, sourcenameA) : strcmpW(bufW, sourcename)) != 0 ){
@@ -762,7 +762,7 @@ void TestIsSupported(void)
 					OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 			if ( hFile != INVALID_HANDLE_VALUE ){
 				if ( (LONG_PTR)hFile < 0x10000 ){
-					printout(L" filename is file handle:");
+					printout(L" dw is file handle:");
 					PrintSupport(IsSupportedT(unicode, bufA, bufW, hFile));
 				}else{
 					printout(L"* ファイルハンドルのテストができない(over 16bit).\r\n");
