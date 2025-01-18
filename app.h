@@ -1,8 +1,8 @@
 /*=============================================================================
 =============================================================================*/
-#define Q_Version 1,2,0,0
-#define InfoVer "1.2"
-#define InfoCopy "(c)2024"
+#define Q_Version 1,3,0,0
+#define InfoVer "1.3"
+#define InfoCopy "(c)2024,2025"
 
 #ifndef _WIN64
  #ifdef _M_ARM

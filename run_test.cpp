@@ -607,7 +607,7 @@ void TestGetPluginInfo(void)
 					bufA[5] = '\0';
 					if ( result != 0 ){
 						if ( bufA[4] != WRITECHECK_BYTE ){
-							ShowComment(L" ● infono=%d: buflen = 4 のとき、buf[4] を越えて書き込み\r\n", infono);
+							ShowComment(L" ● infono=%d: buflen = 4 のとき、buf[3] を越えて書き込み\r\n", infono);
 						}else if ( strlen(bufA) > 4 ){
 							ShowComment(L" ● infono=%d: 切り捨て時、末尾が \\0 でない\r\n", infono);
 						}
@@ -630,7 +630,7 @@ void TestGetPluginInfo(void)
 					bufW[5] = '\0';
 					if ( result != 0 ){
 						if ( bufW[4] != WRITECHECK_WCHAR ){
-							ShowComment(L" ● infono=%d: buflen = 4 のとき、buf[4] を越えて書き込み\r\n", infono);
+							ShowComment(L" ● infono=%d: buflen = 4 のとき、buf[3] を越えて書き込み\r\n", infono);
 						}else if ( strlenW(bufW) > 4 ){
 							ShowComment(L" ● infono=%d: 切り捨て時、末尾が \\0 でない\r\n", infono);
 						}
@@ -1010,7 +1010,7 @@ void TestGetArchiveInfo(void)
 				ShowComment(L" ● ソースファイルが無いときは *lphInf = NULL にする必要がある\r\n");
 			}
 
-			printout(L"SOURCE_DISK(non-existence)");
+			printout(L"SOURCE_DISK");
 			strcpy(buf, sourcenameA);
 			hInfFile = INVALID_HANDLE_VALUE;
 			result = GetArchiveInfo(buf, 0, SUSIE_SOURCE_DISK, &hInfFile);
@@ -1639,7 +1639,7 @@ void TestCreatePicture(void)
 	LocalFree(HBm);
 }
 
-void TestPlugin(void)
+int TestPlugin(void)
 {
 	DWORD oldtls, nowtls;
 
@@ -1673,4 +1673,5 @@ void TestPlugin(void)
 		printoutfColor(COLOR_COMMENT, L"\r\n*** Check point: %d ***\r\n", CommentCount);
 	}
 	printout(L"\r\nEnd test.\r\n");
+	return (CommentCount == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

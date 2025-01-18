@@ -93,10 +93,10 @@ extern BOOL LoadPlugin(WCHAR *filename);
 #define FreePlugin() FreeLibrary(hPlugin);
 
 extern BOOL CheckHeader(void);
-extern void RunGetPicture(MODELIST RunMode);
+extern int RunGetPicture(MODELIST RunMode);
 extern void RunShowPicture(MODELIST RunMode);
 extern void RunArchive(MODELIST RunMode);
-extern void TestPlugin(void);
+extern int TestPlugin(void);
 
 extern void PluginResult(int result);
 extern void ShowAPIlist(void);

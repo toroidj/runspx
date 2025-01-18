@@ -28,13 +28,14 @@ BOOL CheckHeader(void)
 
 // spibench ÇÃìØñºä÷êîÇÃâ¸ïœî≈
 // ( http://cetus.sakura.ne.jp/softlab/toolbox2/index.html#spibench )
-void SaveDibData(LPCWSTR lpBmpFn, HLOCAL HBInfo, HLOCAL HBm)
+int SaveDibData(LPCWSTR lpBmpFn, HLOCAL HBInfo, HLOCAL HBm)
 {
 	BITMAPFILEHEADER bmfh;
 	void *lpbmh;
 	void *lpdib;
 	HANDLE  hFile;
 	DWORD bmh_bytes, dib_bytes, tmp;
+	int result = SUSIEERROR_NOERROR;
 
 	lpbmh = LocalLock(HBInfo);
 	lpdib = LocalLock(HBm);
@@ -43,7 +44,7 @@ void SaveDibData(LPCWSTR lpBmpFn, HLOCAL HBInfo, HLOCAL HBm)
 		printout(L"The plug-in has returned an invalid memory block.\n");
 		LocalUnlock(HBInfo);
 		LocalUnlock(HBm);
-		return;
+		return SUSIEERROR_FAULTMEMORY;
 	}
 	hFile = CreateFileW(lpBmpFn, GENERIC_WRITE, FILE_SHARE_READ, NULL,
 					   CREATE_ALWAYS, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
@@ -51,7 +52,7 @@ void SaveDibData(LPCWSTR lpBmpFn, HLOCAL HBInfo, HLOCAL HBm)
 		printoutf(L"Can't Open - %s\n", lpBmpFn);
 		LocalUnlock(HBInfo);
 		LocalUnlock(HBm);
-		return;
+		return SUSIEERROR_FILEWRITE;
 	}
 
 	if ( (bmh_bytes = *(DWORD *)lpbmh) < sizeof(BITMAPINFOHEADER) ){ /* OS/2 format */
@@ -89,10 +90,12 @@ void SaveDibData(LPCWSTR lpBmpFn, HLOCAL HBInfo, HLOCAL HBm)
 		 !WriteFile(hFile, lpbmh, bmh_bytes, &tmp, NULL) ||
 		 !WriteFile(hFile, lpdib, dib_bytes, &tmp, NULL)) {
 		 printoutf(L"Write Error - %s\n", lpBmpFn);
+		result = SUSIEERROR_FILEWRITE;
 	}
 	CloseHandle(hFile);
 	LocalUnlock(HBInfo);
 	LocalUnlock(HBm);
+	return result;
 }
 
 int DoGetPicture(MODELIST RunMode, HLOCAL &HBInfo, HLOCAL &HBm)
@@ -138,13 +141,13 @@ int DoGetPicture(MODELIST RunMode, HLOCAL &HBInfo, HLOCAL &HBm)
 	return result;
 }
 
-void RunGetPicture(MODELIST RunMode)
+int RunGetPicture(MODELIST RunMode)
 {
 	int result;
 	HLOCAL HBInfo, HBm;
 
 	result = DoGetPicture(RunMode, HBInfo, HBm);
-	if ( result != SUSIEERROR_NOERROR ) return;
+	if ( result != SUSIEERROR_NOERROR ) return EXIT_FAILURE;
 
 	if ( UseCreatePicture ){
 		HMODULE hXPIPlugin = NULL;
@@ -171,10 +174,11 @@ void RunGetPicture(MODELIST RunMode)
 		}
 		if ( hXPIPlugin != NULL ) FreeLibrary(hXPIPlugin);
 	}else{
-		SaveDibData(targetname, HBInfo, HBm);
+		result = SaveDibData(targetname, HBInfo, HBm);
 	}
 	LocalFree(HBInfo);
 	LocalFree(HBm);
+	return (result == SUSIEERROR_NOERROR) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 void RunShowPicture(MODELIST RunMode)

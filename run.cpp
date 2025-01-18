@@ -154,12 +154,12 @@ int __cdecl main(int, char *)
 
 				case MODE_GETPICTURE:
 				case MODE_GETPREVIEW:
-					RunGetPicture(RunMode);
+					result = RunGetPicture(RunMode);
 					break;
 
 				case MODE_TEST:
 				case MODE_TEST_ZEROSIZE:
-					TestPlugin();
+					result = TestPlugin();
 					break;
 
 				default:

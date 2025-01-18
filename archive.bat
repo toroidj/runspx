@@ -1,7 +1,7 @@
 @echo off
 set RETAIL=1
 rem *** set value ***
-set arcname=runspx12.zip
+set arcname=runspx13.zip
 set readme=runspx.txt
 set srcname=runspxsrc.7z
 

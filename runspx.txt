@@ -1,5 +1,5 @@
  ------------------------------------------------------------------------------
-	runspi / runsph / runspha	Version 1.2 Copyright (c)2024 TORO
+	runspi / runsph / runspha	Version 1.3 Copyright (c)2024,2025 TORO
  ------------------------------------------------------------------------------
 
 	Susie Plug-in を使って画像の取得、書庫展開をしたり、Susie Plug-inの
@@ -92,8 +92,13 @@
 	runspx.exe (Plug-inのパス) (読み込む画像・書庫のパス) -tz [-p]
 
 	全APIを一通り使用するテストを行います。
+
 	挙動についてコメントがある場合は「●コメント内容」を出力します。
 	「End test.」が表示されずに終了したときは、異常終了です。
+	
+	書庫のテストやCreatePictureのテストを行ったときは、%temp%\runspx に
+	結果が残ります。
+
 	異常終了したとき、スタックトレース表示が可能であれば表示します。
 	表示できない場合は、主にスタックの破損か、スタックオーバフローと
 	思われます。
@@ -186,6 +191,11 @@ typedef struct {
     WCHAR          path[200];	// 相対パス
     WCHAR          filename[200];	// ファイルネーム
     unsigned long  crc;		// CRC
+    #ifdef _WIN64
+       // 64bit版の構造体サイズは844bytesですが、実際のサイズは
+       // アラインメントにより848bytesになります。環境によりdummyが必要です。
+       char        dummy[4];
+    #endif
 }SUSIE_FINFOW;
 #pragma pack(pop)
 
@@ -200,14 +210,18 @@ int __stdcall IsSupportedW(LPCWSTR filename, void *dw);
 int __stdcall ConfigurationDlg(HWND hWnd, int function);
 int __stdcall GetPictureInfo(LPCSTR buf, LONG_PTR len, unsigned int flag, struct PictureInfo *lpInfo);
 int __stdcall GetPictureInfoW(LPCWSTR buf, LONG_PTR len, unsigned int flag, struct PictureInfo *lpInfo);
-int __stdcall GetPicture(LPCSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
-int __stdcall GetPictureW(LPCWSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
-int __stdcall GetPreview(LPCSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
-int __stdcall GetPreviewW(LPCWSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+int __stdcall GetPicture(LPCSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+int __stdcall GetPictureW(LPCWSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+int __stdcall GetPreview(LPCSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+int __stdcall GetPreviewW(LPCWSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
 int __stdcall GetArchiveInfo(LPCSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *lphInf);
+int __stdcall GetArchiveInfoW(LPCWSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *lphInf);
 int __stdcall GetFile(LPCSTR src, LONG_PTR len, LPSTR dest, unsigned int flag, SUSIE_PROGRESS prgressCallback, LONG_PTR lData);
+int __stdcall GetFileW(LPCWSTR src, LONG_PTR len, LPWSTR dest, unsigned int flag, SUSIE_PROGRESS prgressCallback, LONG_PTR lData);
 int __stdcall GetFileInfo(LPCSTR buf, LONG_PTR len, LPCSTR filename, unsigned int flag, SUSIE_FINFO *lpInfo);
-int __stdcall CreatePicture(LPCSTR filepath, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, struct PictureInfo *lpInfo, SUSIE_PROGRESS progressCallback, LONG_PTR lData); // filepath の拡張子で保存形式を決定
+int __stdcall GetFileInfoW(LPCWSTR buf, LONG_PTR len, LPCWSTR filename, unsigned int flag, SUSIE_FINFOW *lpInfo);
+int __stdcall CreatePicture(LPCSTR filepath, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, struct PictureInfo *lpInfo, SUSIE_PROGRESS progressCallback, LONG_PTR lData); // filepath の拡張子で保存形式を決定
+int __stdcall CreatePictureW(LPCWSTR filepath, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, struct PictureInfo *lpInfo, SUSIE_PROGRESS progressCallback, LONG_PTR lData); // filepath の拡張子で保存形式を決定
 
 // DLL 動的読み込み用
 typedef int (__stdcall *GETPLUGININFO)(int infono, LPSTR buf, int buflen);
@@ -217,16 +231,18 @@ typedef int (__stdcall *ISSUPPORTEDW)(LPCWSTR filename, void *dw);
 typedef int (__stdcall *CONFIGURATIONDLG)(HWND hWnd, int function);
 typedef int (__stdcall *GETPICTUREINFO)(LPCSTR buf, LONG_PTR len, unsigned int flag, struct PictureInfo *lpInfo);
 typedef int (__stdcall *GETPICTUREINFOW)(LPCWSTR buf, LONG_PTR len, unsigned int flag, struct PictureInfo *lpInfo);
-typedef int (__stdcall *GETPICTURE)(LPCSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
-typedef int (__stdcall *GETPICTUREW)(LPCWSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
-typedef int (__stdcall *GETPREVIEW)(LPCSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
-typedef int (__stdcall *GETPREVIEWW)(LPCWSTR buf, LONG_PTR len, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+typedef int (__stdcall *GETPICTURE)(LPCSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+typedef int (__stdcall *GETPICTUREW)(LPCWSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+typedef int (__stdcall *GETPREVIEW)(LPCSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
+typedef int (__stdcall *GETPREVIEWW)(LPCWSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, SUSIE_PROGRESS lpPrgressCallback, LONG_PTR lData);
 typedef int (__stdcall *GETARCHIVEINFO)(LPCSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *lphInf);
 typedef int (__stdcall *GETARCHIVEINFOW)(LPCWSTR buf, LONG_PTR len, unsigned int flag, HLOCAL *lphInf);
 typedef int (__stdcall *GETFILE)(LPCSTR src, LONG_PTR len, LPSTR dest, unsigned int flag, SUSIE_PROGRESS prgressCallback, LONG_PTR lData);
 typedef int (__stdcall *GETFILEW)(LPCWSTR src, LONG_PTR len, LPWSTR dest, unsigned int flag, FARPROC prgressCallback, LONG_PTR lData);
 typedef int (__stdcall *GETFILEINFO)(LPCSTR buf, LONG_PTR len, LPCSTR filename, unsigned int flag, SUSIE_FINFO *lpInfo);
 typedef int (__stdcall *GETFILEINFOW)(LPCWSTR buf, LONG_PTR len, LPCWSTR filename, unsigned int flag, SUSIE_FINFOW *lpInfo);
+typedef int (__stdcall *CREATEPICTURE)(LPCSTR filepath, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, void *lpInfo, void *progressCallback, LONG_PTR lData);
+typedef int (__stdcall *CREATEPICTUREW)(LPCWSTR filepath, unsigned int flag, HLOCAL *pHBInfo, HLOCAL *pHBm, void *lpInfo, void *progressCallback, LONG_PTR lData);
 
 
 ●最後に
@@ -263,6 +279,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ●履歴
+Version 1.3	2025/01/18
+・エラー検出を強化
+・誤記の修正
+
 Version 1.2	2024/03/30
 ・GetFileのテストで、ソースがメモリの時の動作がおかしいのを修正
 
@@ -275,4 +295,4 @@ Version 1.0	2024/03/16
 ●著作権者／連絡先／一次配布先					TORO／高橋 良和
 
 E-mail	toroid.jp@gmail.com
-WWW	http://toro.d.dooo.jp/
+WWW	http://toro.d.dooo.jp/	https://toroidj.github.io/
